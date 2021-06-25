@@ -5,6 +5,7 @@ use sqlx::{
 };
 use api_db::types::Model;
 use crate::types::now;
+use crate::auth::jwt::*;
 use serde::{Serialize, Deserialize};
 
 use super::{Account, Credentials, Profile, User, account::AccountProvider, credentials::CredentialsIn, user::UserIn};
@@ -119,13 +120,14 @@ impl CredentialsSignupIn {
             username: creds.username,
             password: creds.password
         };
-        let creds = creds.hash();
-        let creds = creds.insert(&db).await?;  //Full struct with creds id
-
+        let creds = creds.hash().insert(&db).await?;  //Full struct with creds id
         // 3. Use the created credentials and user to create a Devisa acct
-        let acct: Account = AccountProvider::devisa_account(
+        let acct: Account = AccountProvider::devisa_creds_account(
             user.id,
             creds.id,
+            None, // accesss token
+            None, // refresh token
+            None //Access token expires
         );
         acct.insert(&db).await?;
 
@@ -142,4 +144,40 @@ impl CredentialsSignupIn {
     pub async fn signup_oauth(self, db: &PgPool) -> sqlx::Result<()> {
         Ok(())
     }
+}
+
+pub async fn signup_credentials(db: &PgPool, user: User, creds: CredentialsIn) -> sqlx::Result<User> {
+
+    let profile: Profile = Profile { user_id: user.id, ..Default::default() };
+    let creds: Credentials = Credentials {
+        user_id: user.id,
+        username: creds.username,
+        password: creds.password,
+        id: Uuid::new_v4(),
+    }.hash();
+    // 1. Create the user's base user model
+
+    // 2. Use the created user to create credentials
+    let creds = Credentials {
+        id: Uuid::new_v4(),
+        user_id: user.id,
+        username: creds.username,
+        password: creds.password
+    };
+    let creds = creds.hash().insert(&db).await?;  //Full struct with creds id
+    // 3. Use the created credentials and user to create a Devisa acct
+    let acct: Account = AccountProvider::devisa_creds_account(
+        user.id,
+        creds.id,
+        None, // accesss token
+        None, // refresh token
+        None //Access token expires
+    );
+    let user = user.insert(&db).await?; //Full struct with user id
+    let acct = acct.insert(&db).await?;
+    let creds = creds.insert(&db).await?;
+    let profile = profile.insert(&db).await?;
+
+    // 4. Finally, create a new (likely empty) profile for the user
+    Ok(user)
 }

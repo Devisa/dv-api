@@ -1,6 +1,6 @@
 use api_common::auth::jwt;
 use api_common::auth::jwt::Role;
-use api_common::models::Session;
+use api_common::models::{account::{Account, AccountProvider}, Session};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use actix_web::http::{HeaderName, header, HeaderValue};
@@ -11,7 +11,7 @@ use actix_web::{
     HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
     web::{self, ServiceConfig, Json, Data, Form, Path}
 };
-use api_common::{models::{Profile, account::AccountProvider, auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}}, types::Gender};
+use api_common::{models::{Profile,  auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}}, types::Gender};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -22,31 +22,49 @@ pub fn routes(cfg: &mut ServiceConfig) {
 
 }
 
-/// NOTE: Credentials signup -- three phases
+/// NOTE: Credentials signup -- four phases
 ///     1. User provides e-mail and real name (creates User row)
 ///     2. User provides username and password (creates Credentials row)
-///     3. User provides optional profile info (create Profile row -- can be empty)
+///     3. Credentials account (Devisa as the provider) created due to implication
+///     4. User provides optional profile info (create Profile row -- can be empty)
 /// The signup handler will handle steps 1 and 2, then pass on 3 to another handler.
 ///
 /// (I know all the cloning is stupid and nooby af im still learning)
-pub async fn signup_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsSignup>) -> impl Responder {
+pub async fn signup_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsSignup>) -> actix_web::Result<HttpResponse> {
     let db = db.into_inner();
     let user = User::new(Some(data.clone().name), Some(data.clone().email), data.clone().image);
+    tracing::info!("Created user.");
+    let profile = Profile { user_id: user.id, ..Default::default() };
+    tracing::info!("Created profile.");
     let creds = Credentials::create(user.id, data.clone().username, data.clone().password).hash();
+    tracing::info!("Created creds.");
+    let acc = AccountProvider::devisa_creds_account(
+        user.id,
+        creds.id,
+        None,
+        None,
+        None
+    );
+    tracing::info!("Created user, creds, and account -- now inserting user....");
     let user = user.insert(&db.pool).await;
+    tracing::info!("now inserting creds....");
     let creds = creds.insert(&db.pool).await;
+    tracing::info!("now inserting account....");
+    let acct = acc.insert(&db.pool).await;
+    tracing::info!("now inserting profile....");
+    let profile = profile.insert(&db.pool).await;
     if let Ok(creds) = creds {
-        if user.is_ok() {
-            return HttpResponse::Ok().json(creds)
+        if user.is_ok() && acct.is_ok() && profile.is_ok() {
+            return Ok(HttpResponse::Ok().json(creds)
                 .with_header(("Content-Type", "application/json"))
-                .respond_to(&req);
+                .respond_to(&req));
         }
-        return HttpResponse::BadRequest()
+        return Ok(HttpResponse::BadRequest()
                 .with_header(("Content-Type", "application/json"))
-                .respond_to(&req);
+                .respond_to(&req));
     }
 
-    return HttpResponse::Forbidden().body("Invalid credentials");
+    return Ok(HttpResponse::Forbidden().body("Invalid credentials"));
 }
 
 /// NOTE: Credentials login -- three phases

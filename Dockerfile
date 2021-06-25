@@ -18,7 +18,7 @@ FROM docker.io/rust:latest AS builder
 
 RUN update-ca-certificates
 
-ENV USER=myip
+ENV USER=root
 ENV UID=10001
 
 RUN adduser \
@@ -28,48 +28,15 @@ RUN adduser \
     --shell "/sbin/nologin" \
     --no-create-home \
     # --uid  \
-    "dvapi"
+    "di-api"
 
-WORKDIR /dvapi
+WORKDIR /di-api
 
-COPY ./.env ./.env
-COPY ./.cargo/ ./.cargo/
-COPY ./Cargo.toml ./Cargo.toml
+COPY ./ ./
 
-COPY ./api-srv ./api-srv
-COPY ./api-srv/Cargo.toml ./api-srv/Cargo.toml
+RUN cargo build --release --package di-api
 
-COPY ./api-data/src ./api-data/src
-COPY ./api-core/Cargo.toml ./api-core/Cargo.toml
-
-COPY ./api-redis/src ./api-redis/src
-COPY ./api-redis/Cargo.toml ./api-redis/Cargo.toml
-
-COPY ./api-redis/src ./api-redis/src
-COPY ./api-redis/Cargo.toml ./api-redis/Cargo.toml
-
-COPY ./api-common/src ./api-common/src
-COPY ./api-common/Cargo.toml ./api-common/Cargo.toml
-
-COPY ./api-cloud/src ./api-cloud/src
-COPY ./api-cloud/Cargo.toml ./api-cloud/Cargo.toml
-
-COPY ./api-http/src ./api-http/src
-COPY ./api-http/Cargo.toml ./api-http/Cargo.toml
-
-COPY ./api-exec/src ./api-exec/src
-COPY ./api-exec/Cargo.toml ./api-exec/Cargo.toml
-
-COPY ./api-grpc/src ./api-grpc/src
-COPY ./api-grpc/Cargo.toml ./api-grpc/Cargo.toml
-
-COPY ./api-lang/src ./api-lang/src
-COPY ./api-lang/Cargo.toml ./api-lang/Cargo.toml
-
-COPY ./api-rt/src ./api-rt/src
-COPY ./api-rt/Cargo.toml ./api-rt/Cargo.toml
-
-RUN cargo build --release
+################3333
 
 FROM docker.io/debian:buster-slim
 
@@ -80,12 +47,12 @@ RUN apt-get install libssl-dev -y
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
-WORKDIR /dvapi
+WORKDIR /di-api
 
 # Copy our build
-COPY --from=builder /dvapi/target/release/dvapi ./
+COPY --from=builder /di-api/target/release/di-api ./
 
 # Use an unprivileged user.
-USER dvapi:dvapi
+USER di-api:di-api
 
-CMD ["/dvapi/dvapi"]
+CMD ["/di-api/di-api"]
