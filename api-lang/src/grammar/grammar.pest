@@ -1,0 +1,141 @@
+program = {
+    instruction | noop
+}
+
+instruction = _{
+    ( register1 | register0)  ~
+    (goto
+    | negate
+    | multiply
+    | add
+    | print_char
+    | print_value
+    | pop
+    | push
+    | store_syllables)
+}
+
+register1 = { start ~ whitespace+ }
+register0 = { start }
+
+goto  = { any_not_forward_slash* ~ "/" ~ any* ~ end }
+negate = { any_not_caps_in_word* ~ caps_in_word ~ any* ~ end }
+multiply = { (uppercase_letter | (any_not_title_case* ~ title_case)) ~ any* ~ end }
+add = { like_all | as_all }
+print_char =  { any_not_question* ~ question ~ any* ~ end }
+print_value =  { any_not_dot* ~ dot ~ any* ~ end }
+pop =  { any_not_comma* ~ comma ~ any* ~ end }
+push =  { any_not_hyphen* ~ hyphen ~ any* ~ end }
+noop = { start ~ whitespace* ~ end }
+store_syllables =  { any+ }
+
+forward_slash = _{ "/" }
+any_not_forward_slash = _{ !forward_slash ~ any }
+
+caps_in_word = _{ character ~ uppercase_letter}
+any_not_caps_in_word = _{ !caps_in_word ~ any }
+
+title_case = _{ whitespace ~ uppercase_letter }
+any_not_title_case = _{ !title_case ~ any }
+
+like_all = _{ like1_full | like2_full | like3_full | like4_full }
+
+like1_full = _{ any_not_like1* ~ like1 ~ any* ~ end }
+like2_full = _{ any_not_like2* ~ like2 ~ end }
+like3_full = _{ like3 ~ any* ~ end }
+like4_full = _{ like4 ~ end }
+
+like1 = _{ punctuation_or_ws ~ "like" ~ punctuation_or_ws }
+like2 = _{ punctuation_or_ws ~ "like" }
+like3 = _{ "like" ~ punctuation_or_ws }
+like4 = _{ "like" }
+any_not_like1 = _{ !like1 ~ any }
+any_not_like2 = _{ !like2 ~ any }
+any_not_like3 = _{ !like3 ~ any }
+
+as_all = _{ as1_full | as2_full | as3_full | as4_full }
+
+as1_full = _{ any_not_as1* ~ as1 ~ any* ~ end }
+as2_full = _{ any_not_as2* ~ as2 ~ end }
+as3_full = _{ as3 ~ any* ~ end }
+as4_full = _{ as4 ~ end }
+
+as1 = _{ punctuation_or_ws ~ "as" ~ punctuation_or_ws }
+as2 = _{ punctuation_or_ws ~ "as" }
+as3 = _{ "as" ~ punctuation_or_ws }
+as4 = _{ "as" }
+any_not_as1 = _{ !as1 ~ any }
+any_not_as2 = _{ !as2 ~ any }
+any_not_as3 = _{ !as3 ~ any }
+
+punctuation_or_ws = _{ PUNCTUATION | whitespace }
+
+question = _{ "?" }
+any_not_question = _{ !question ~ any }
+
+dot = _{ "." }
+any_not_dot = _{ !dot ~ any }
+
+comma = _{ "," }
+any_not_comma = _{ !comma ~ any }
+
+
+hyphen = _{ "-" }
+any_not_hyphen = _{ !hyphen ~ any }
+
+start = _{ SOI }
+
+end = _{ whitespace* ~ EOI }
+
+character = _{ ASCII_ALPHANUMERIC | "." | "_" | "/" }
+any_not_character = _{ !character ~ any }
+
+uppercase_letter = _{ UPPERCASE_LETTER }
+
+whitespace = _{ " " | "\t" }
+any = _{ ANY }
+
+// DFSJFKF
+
+bool_expr = { SOI ~ expr ~ EOI }
+
+expr = {
+    (paren_bool | comp_expr) ~ ( (and_op|or_op)~ (paren_bool| comp_expr))*
+}
+
+and_op = { "and" }
+or_op = { "or" }
+
+paren_bool = { "(" ~ expr ~  ")" }
+
+comp_expr = { field ~ op ~ value }
+
+field = @{ (ASCII_ALPHA ~ ASCII_ALPHANUMERIC*) }
+op = { eq | neq | op_in | op_not_in | gt | gte | lt | lte | like | not_like }
+eq = { "=" }
+neq = { "!=" | "<>"}
+op_in = { "in" }
+op_not_in= { "not" ~ "in"}
+gt = { ">" }
+gte = { ">=" }
+lt = { "<" }
+lte = { "<=" }
+like = { "like" }
+not_like = { "not" ~ "like" }
+
+value = {
+    string_literal
+    | num_literal
+    | "(" ~ string_literal ~("," ~ string_literal)* ~ ")"
+    | "(" ~ num_literal ~("," ~ num_literal)* ~ ")"
+}
+
+num_literal = @{
+    "-"?
+    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+    ~ ("." ~ ASCII_DIGIT*)?
+    ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+
+string_literal = ${ "\"" ~ string ~ "\"" }
+string = @{ char* }

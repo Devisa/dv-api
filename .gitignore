@@ -1,0 +1,9 @@
+**.env
+/api/api
+**target
+**node_modules
+**.env.prod
+**.archive
+/scripts
+/services
+**.ipynb_checkpoints

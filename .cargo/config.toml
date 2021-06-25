@@ -1,0 +1,53 @@
+[alias]
+b = "build -package di-api"
+r = "run -p di-api"
+t = "test --package api"
+c = "check --package api"
+rr = "run --package api"
+
+
+ra = "run --package api --features actix_x --bin api-actix"
+rw = "run --package api --features warp_x --no-default-features --bin api-warp"
+rt = "run --package api --features tide_x --no-default-features --bin api-tide"
+rA = "run --package api --features actix --bin api-actix"
+rW = "run --package api --features warp --no-default-features --bin api-warp"
+rT = "run --package api --features tide --no-default-features --bin api-tide"
+
+ca = "check --package api --features actix_x --bin api-actix"
+cw = "check --package api --features warp_x --no-default-features --bin api-warp"
+ct = "check --package api --features tide_x --no-default-features --bin api-tide"
+cA = "check --package api --features actix --bin api-actix"
+cW = "check --package api --features warp --no-default-features --bin api-warp"
+cT = "check --package api --features tide --no-default-features --bin api-tide"
+
+ba = "build --package api --features actix_x --bin api-actix"
+bw = "build --package api --features warp_x --no-default-features --bin api-warp"
+bt = "build --package api --features tide_x --no-default-features --bin api-tide"
+bA = "build --package api --features actix --bin api-actix"
+bW = "build --package api --features warp --no-default-features --bin api-warp"
+bT = "build --package api --features tide --no-default-features --bin api-tide"
+
+rar = "run --package api --features actix_x --bin api-actix --release"
+rwr = "run --package api --features warp_x --no-default-features --bin api-warp --release"
+rtr = "run --package api --features tide_x --no-default-features --bin api-tide --release"
+rAr = "run --package api --features actix --bin api-actix --release"
+rWr = "run --package api --features warp --no-default-features --bin api-warp --release"
+rTr = "run --package api --features tide --no-default-features --bin api-tide --release"
+
+bar = "build --package api --features actix_x --bin api-actix --release"
+bwr = "build --package api --features warp_x --no-default-features --bin api-warp --release"
+btr = "build --package api --features tide_x --no-default-features --bin api-tide --release"
+bAr = "build --package api --features actix --bin api-actix --release"
+bWr = "build --package api --features warp --no-default-features --bin api-warp --release"
+bTr = "build --package api --features tide --no-default-features --bin api-tide --release"
+
+tide = "--package api --features tide_x --no-default-features"
+warp = "--package api --features warp_x --no-default-features"
+actix = "--package api --features actix_x --no-default-features"
+
+
+[cargo-new]
+name = "Chris Pecunies"
+email = "chris@idlets.com"
+vcs = "none"
+

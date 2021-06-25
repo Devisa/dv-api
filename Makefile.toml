@@ -1,0 +1,35 @@
+[tasks.format]
+install_crate = "rustfmt"
+command = "cargo"
+args = ["fmt", "--", "--emit=files"]
+
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.build-api-core]
+command = "cargo"
+args = ["build", "-p", "api"]
+dependencies = ["clean"]
+
+[tasks.run-api-core]
+command = "cargo"
+args = ["run", "-p", "api"]
+dependencies = ["build-api-core"]
+
+[tasks.build-all]
+command = "cargo"
+args = ["build", "--bins"]
+# args = ["build", "--workspace"]
+
+[tasks.test]
+command = "cargo"
+args = ["test"]
+dependencies = ["clean"]
+
+[tasks.my-flow]
+dependencies = [
+    "format",
+    "build",
+    "test"
+]

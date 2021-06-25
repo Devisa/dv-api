@@ -1,0 +1,62 @@
+version: "3"
+
+services:
+
+  api:
+    build: .
+    ports:
+      - "80:80"
+    expose:
+      - "80"
+
+  redis:
+      image: "bitnami/redis:latest"
+      ports:
+        - "6379:6379"
+      volumes:
+        - /srv/docker/redis:/var/lib/redis
+      expose:
+        - "6379"
+      restart: always
+
+  pg:
+    image: "postgres:latest"
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: dvsa_db
+      POSTGRES_PASSWORD: dvsa_pw
+
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    command:
+      - "--log.level=DEBUG"
+      - "--log.filepath=/traefik.log"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8080"
+    ports:
+      - 80:80
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /share/AppData/Traefik2/traefik.log:/traefik.log
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.rev-proxy.entrypoints=traefik"
+        - "traefik.http.routers.rev-proxy.rule=Host(`mymachine.domain.com`)"
+
+  elasticsearch:
+    build: docker/elasticsearch
+    expose:
+      - 9200
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1

@@ -1,0 +1,24 @@
+[package]
+name = "api-redis"
+version = "0.1.0"
+authors = ["clpi <clp@clp.is>"]
+edition = "2018"
+default-run = "di-redis-client"
+
+[[bin]]
+name = "di-redis-client"
+path = "src/bin/client.rs"
+
+[lib]
+name = "api_redis"
+path = "src/lib.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix = "0.12.0"
+actix-rt = "2.2.0"
+# apalis = { version = "0.2.0", features = ["redis"]}
+mobc = "0.7.2"
+mobc-redis = "0.7.0"
+redis = "0.20.1"

@@ -1,0 +1,24 @@
+[package]
+name = "api-data"
+version = "0.1.0"
+authors = ["Chris P <chrisp1877@gmail.com>"]
+edition = "2018"
+default-run = "main"
+description = "Responsible for providing low-level data structures and utility-providing algorithms corresponding to them"
+
+[[bin]]
+name = "main"
+path = "src/bin/main.rs"
+
+[lib]
+name = "api_data"
+path = "src/lib.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix = "0.11.1"
+petgraph = { version = "0.5.1", features = ["serde-1"]}
+# riker = "*"
+serde = "1.0.125"
+serde_json = "1.0.64"

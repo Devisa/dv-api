@@ -1,0 +1,33 @@
+stages:
+  #   - test
+  - build
+
+rust-latest:
+  stage: build
+  image: rustlang/rust:latest
+  script:
+    - echo "helo"
+    - cargo build --package di-api --verbose
+    # - cargo build --verbose --release
+  allow_failure: true
+  artifacts:
+    name: api-bin
+    paths:
+      - target/debug/di-api
+      # - target/releas
+    # - cargo test --verbose
+
+# rust-nightly:
+#   stage: build
+#   image: rustlang/rust:nightly
+#   script:
+#     - cargo build --verbose
+#     - cargo test --verbose
+#   allow_failure: true
+
+# deploy:
+#   stage: deploy
+#   image: ruby:2.7
+#   script:
+#     - gem install deploy
+#     - dpl --provider=heroku --app=devisa-api --api-key=$HEROKU_API_KEY --strategy=git
