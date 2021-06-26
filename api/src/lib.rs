@@ -9,6 +9,7 @@ pub mod auth;
 pub mod util;
 pub mod error;
 pub mod handlers;
+pub mod models;
 
 pub use api_db::db;
 pub use api::Api;

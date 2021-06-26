@@ -1,10 +1,14 @@
 use uuid::Uuid;
+use api_db::Model;
 use actix_web::{guard::Guard, HttpRequest, HttpResponse, Responder};
 use crate::types::{Status, now, private, Expiration};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
+use derive_more::Display;
 
-#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+use super::Account;
+
+#[derive(Debug,  FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Session {
     #[serde(default = "Uuid::new_v4")]
     pub id: Uuid,
@@ -21,7 +25,7 @@ pub struct Session {
 }
 
 #[async_trait::async_trait]
-impl super::Model for Session {
+impl Model for Session {
     fn table() -> String { "sessions".to_string() }
 
     async fn insert(
@@ -71,6 +75,13 @@ impl Session {
         Self { access_token: token, ..self }
     }
 
+    pub fn get_access_token() -> Uuid {
+        Uuid::new_v4()
+    }
+    pub fn get_session_token() -> Uuid {
+        Uuid::new_v4()
+    }
+
     pub async fn update_by_id(db: &PgPool, id: Uuid, r: Session)
         -> anyhow::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -91,8 +102,22 @@ impl Session {
     }
 
     pub async fn get_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Self>> {
-        let sess = sqlx::query_as::<Postgres, Self>("SELECT * FROM sessions WHERE user_id = $1")
+        let sess = sqlx::query_as::<Postgres, Self>("SELECT * FROM sesions WHERE user_id = $1")
             .bind(user_id)
+            .fetch_optional(db).await?;
+        Ok(sess)
+    }
+
+    //TODO do this more programmatically...
+    pub async fn fetch_by_access_token(db: &PgPool, token: Uuid) -> anyhow::Result<Option<Self>> {
+        let sess = sqlx::query_as::<Postgres, Self>("select * from sessions where access_token = $1")
+            .bind(token)
+            .fetch_optional(db).await?;
+        Ok(sess)
+    }
+    pub async fn fetch_by_refresh_token(db: &PgPool, token: Uuid) -> anyhow::Result<Option<Self>> {
+        let sess = sqlx::query_as::<Postgres, Self>("select * from sessions where refresh_token = $1")
+            .bind(token)
             .fetch_optional(db).await?;
         Ok(sess)
     }

@@ -1,6 +1,7 @@
 use crate::{
     types::{Status, now, private}
 };
+use api_db::Model;
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
@@ -25,6 +26,19 @@ pub enum AccountProvider {
     LinkedIn,
     /// id = "twitter" TODO
     Twitter
+}
+
+// TODO make a real access token struct
+#[derive(sqlx::Type, Debug, Clone)]
+#[sqlx(transparent, type_name = "access_token")]
+pub struct AccessToken(String);
+
+impl AccessToken {
+
+    pub fn gen() -> Self {
+
+        AccessToken(Uuid::new_v4().to_string())
+    }
 }
 
 impl AccountProvider {
@@ -101,7 +115,7 @@ impl Default for Account {
 }
 
 #[async_trait::async_trait]
-impl super::Model for Account {
+impl Model for Account {
 
     fn table() -> String { String::from("accounts") }
 
@@ -158,7 +172,12 @@ impl Account {
     }
     */
 
-    pub fn new_google() {}
+    pub fn access_token(self) -> String {
+        self.access_token.unwrap_or_default()
+    }
+
+    pub fn new_google() {
+    }
 
     pub fn new_github() {}
 

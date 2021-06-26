@@ -189,3 +189,13 @@ pub async fn signup_profile(
     }
 }
 
+
+pub async fn get_session_token(req: HttpRequest) -> Option<String> {
+     req.headers()
+         .get("next-auth.session-token")
+         .map(|hv| hv.to_str()
+             .map(|v| v.to_string())
+             .ok()
+         )
+         .unwrap_or(None)
+}

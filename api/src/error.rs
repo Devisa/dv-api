@@ -1,47 +1,76 @@
 use std::error;
 use std::fmt;
 
+use derive_more::{Error, From, Into, Display};
 use actix_web as aweb;
-use actix_web::error::{JsonPayloadError, QueryPayloadError};
+use actix_web::{
+    error::{ResponseError, JsonPayloadError, QueryPayloadError},
+    HttpResponse,
+};
 use actix_web::http::StatusCode;
 use serde::ser::{Serialize, Serializer, SerializeStruct};
 
 #[derive(Debug)]
-pub struct ResponseError {
+pub struct GenericError {
 }
 
-impl error::Error for ResponseError {}
+#[derive(Debug, Display, Error, From)]
+pub enum SessionError {
+    MissingToken,
+    InvalidToken,
+    Internal,
+}
+impl ResponseError for SessionError {
+    fn status_code(&self) -> actix_http::StatusCode {
+        match self {
+            SessionError::MissingToken => StatusCode::NOT_FOUND,
+            SessionError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+            SessionError::InvalidToken => StatusCode::NOT_ACCEPTABLE,
+        }
+    }
 
-impl fmt::Display for ResponseError {
+    fn error_response(&self) -> actix_web::HttpResponse {
+        match self {
+            SessionError::MissingToken => HttpResponse::NotFound().finish(),
+            SessionError::Internal => HttpResponse::InternalServerError().finish(),
+            SessionError::InvalidToken => HttpResponse::NotAcceptable().finish(),
+        }
+    }
+}
+
+
+impl error::Error for GenericError {}
+
+impl fmt::Display for GenericError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("DFDF")
     }
 }
 
-impl From<Error> for ResponseError {
-    fn from(error: Error) -> ResponseError {
-        ResponseError {}
+impl From<Error> for GenericError {
+    fn from(error: Error) -> GenericError {
+        GenericError {}
     }
 }
 
-impl From<sqlx::Error> for ResponseError {
-    fn from(err: sqlx::Error) -> ResponseError {
-        ResponseError {}
+impl From<sqlx::Error> for GenericError {
+    fn from(err: sqlx::Error) -> GenericError {
+        GenericError {}
     }
 }
 
-impl From<actix_web::Error> for ResponseError {
-    fn from(err: actix_web::Error) -> ResponseError {
-        ResponseError {}
+impl From<actix_web::Error> for GenericError {
+    fn from(err: actix_web::Error) -> GenericError {
+        GenericError {}
     }
 }
 
-impl Serialize for ResponseError {
+impl Serialize for GenericError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let struct_name = "ResponseError";
+        let struct_name = "GenericError";
         let field_count = 4;
 
         let mut state = serializer.serialize_struct(struct_name, field_count)?;

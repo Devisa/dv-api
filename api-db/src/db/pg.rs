@@ -1,3 +1,4 @@
+use tracing::info;
 use crate::types::Model;
 use sqlx::postgres::{PgPool, PgPoolOptions, PgRow};
 use sqlx::prelude::*;
@@ -11,8 +12,12 @@ pub struct Db {
 impl Db {
 
     pub async fn new(db_url: &str) -> anyhow::Result<Self> {
+        let collector = tracing_subscriber::fmt::try_init()
+            .expect("Could not init tracing subscriber");
         let pool = PgPoolOptions::new()
             .connect(db_url).await?;
+        let psize = pool.size();
+        info!(psize, "DB Pool successfully initialized");
         Ok( Self { pool } )
     }
 

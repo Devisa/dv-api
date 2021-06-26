@@ -147,14 +147,21 @@ impl Credentials {
 
 
     pub async fn verify(db: &PgPool, username: &str, password: &str) -> anyhow::Result<Credentials> {
-        let user = sqlx::query_as::<Postgres, Credentials>("SELECT * FROM credentials WHERE username = $1")
+        match sqlx::query_as::<Postgres, Credentials>("SELECT * FROM credentials WHERE username = $1")
             .bind(&username)
-            .fetch_one(db).await?;
-        if bcrypt::verify(password, &user.password) {
-            Ok(user)
-        } else {
-            Err(anyhow::anyhow!("The username or password were incorrect"))
-        }
-    }
-}
+            .fetch_one(db).await {
+                Ok(user) => {
+                    if bcrypt::verify(password, &user.password) {
+                        Ok(user)
+                    } else {
+                        Err(anyhow::anyhow!("The username and/or password were incorrect"))
+                    }
+                }
+                Err(e) => {
+                    Err(anyhow::anyhow!("User with that username does not exist {}", e))
+                }
 
+            }
+    }
+
+}

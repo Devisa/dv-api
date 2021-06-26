@@ -10,6 +10,7 @@ use actix_web::{
     },
 };
 use api_db::Db;
+use tracing::Level;
 
 #[derive(Debug, Clone)]
 pub struct Api {
@@ -27,12 +28,15 @@ impl Api {
 
     pub async fn run(self) -> std::io::Result<()> {
         std::env::set_var("RUST_LOG", "actix_server=infoo,actix_web=trace,actix_redis=trace");
-        let env = env_logger::Env::default()
+        /* let env = env_logger::Env::default()
             .filter_or("MY_LOG_LEVEL", "info")
             .write_style_or("MY_LOG_STYLE", "always");
-        env_logger::Builder::from_env(env).init();
+        env_logger::Builder::from_env(env).init(); */
+        /* let _collector = tracing_subscriber::fmt()
+            .try_init()
+            .expect("Could not initialize tracing subscriber"); */
 
-        super::metrics::sentry::sentry_opts();
+        let _guard = super::metrics::sentry::sentry_opts();
 
         let enable_redis = std::env::var("NORMALIZE_PATH").is_ok();
         let server = HttpServer::new(move || {
