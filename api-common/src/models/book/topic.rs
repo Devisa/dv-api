@@ -2,7 +2,7 @@ use actix::prelude::*;
 use actix_web::{guard::Guard, HttpRequest, HttpResponse, Responder};
 use crate::{
     models::{post::Post, },
-    types::{Status, now, private}
+    types::{Id, Status, now, private}
 };
 use serde::{Serialize, Deserialize};
 use sqlx::{

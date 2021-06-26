@@ -1,5 +1,5 @@
 use crate::types::{Status, now, private};
-use crate::models::Model;
+use api_db::{Model, Id};
 use serde::{Serialize, Deserialize};
 use sqlx::{
     FromRow, Postgres, postgres::PgPool,
@@ -8,9 +8,10 @@ use sqlx::{
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FieldValue {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<i32>,
-    pub field_id: i32,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub field_id: Id,
     #[serde(default = "Vec::new")]
     pub value: Vec<u8>,
     #[serde(default = "now")]
@@ -38,17 +39,18 @@ impl Model for FieldValue {
 
 impl FieldValue {
 
-    pub fn new(field_id: i32, value: Vec<u8>) -> Self {
+    pub fn new(field_id: Id, value: Vec<u8>) -> Self {
         Self {
             updated_at: now(),
             created_at: now(),
-            id: None,
-            field_id, value
+            id: Id::gen(),
+            field_id,
+            value
         }
     }
 
 
-    pub async fn field(db: &PgPool, field_id: i32) -> sqlx::Result<Option<super::Field>> {
+    pub async fn field(db: &PgPool, field_id: Id) -> sqlx::Result<Option<super::Field>> {
         let res = sqlx::query_as::<Postgres, super::Field>("
             SELECT * FROM fields WHERE id = $1")
             .bind(field_id)

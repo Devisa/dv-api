@@ -7,10 +7,9 @@ pub mod session;
 pub mod credentials;
 pub mod link;
 
-use uuid::Uuid;
+use api_db::{Model, Id, Db};
 use crate::util::respond;
 use api_common::models::User;
-use api_db::{Db, Model};
 use actix_web::{
     HttpRequest, Responder, http::StatusCode,
     web::{
@@ -127,7 +126,7 @@ pub async fn new_user(user: Json<User>, db: Data<Db>) -> impl Responder {
     }
 }
 
-pub async fn update_by_id(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
+pub async fn update_by_id(id: Path<Id>, db: Data<Db>) -> impl Responder {
     match User::get(&db.pool, id.into_inner()).await {
         Ok(Some(user)) => respond::found(user),
         Ok(None) => respond::not_found("NO USER FOUND"),
@@ -135,7 +134,7 @@ pub async fn update_by_id(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
     }
 }
 
-pub async fn get_by_id(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
+pub async fn get_by_id(id: Path<Id>, db: Data<Db>) -> impl Responder {
     match User::get(&db.pool, id.into_inner()).await {
         Ok(Some(user)) => respond::found(user),
         Ok(None) => respond::not_found("NO USER FOUND"),
@@ -178,33 +177,33 @@ pub async fn delete_by_username(username: Path<String>, db: Data<Db>) -> impl Re
     }
 }
 
-pub async fn delete_by_id(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
+pub async fn delete_by_id(id: Path<Id>, db: Data<Db>) -> impl Responder {
     match User::delete(&db.pool, id.into_inner()).await {
         Ok(Some(user)) => respond::found(user),
         Ok(None) => respond::not_found("NO USER FOUND"),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_created_groups(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
+pub async fn get_user_created_groups(id: Path<Id>, db: Data<Db>) -> impl Responder {
     match User::get_items_created(&db.pool, id.into_inner()).await {
         Ok(groups) => respond::ok(groups),
         Err(e) => respond::err(e),
     }
 }
 //TODO unimplemented
-pub async fn get_user_member_groups(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
+pub async fn get_user_member_groups(id: Path<Id>, db: Data<Db>) -> impl Responder {
     match User::get_items_created(&db.pool, id.into_inner()).await {
         Ok(groups) => respond::ok(groups),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_sessions(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
+pub async fn get_user_sessions(id: Path<Id>, db: Data<Db>) -> impl Responder {
     match User::get_sessions(&db.pool, id.into_inner()).await {
         Ok(sess) => respond::found(sess),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_accounts(id: Path<Uuid>, db: Data<Db>) -> impl Responder {
+pub async fn get_user_accounts(id: Path<Id>, db: Data<Db>) -> impl Responder {
     match User::get_accounts(&db.pool, id.into_inner()).await {
         Ok(accts) => respond::found(accts),
         Err(e) => respond::err(e),
@@ -217,38 +216,38 @@ pub async fn update_user_credentials() -> impl Responder {
 pub async fn update_user_profile() -> impl Responder {
     "".to_string()
 }
-pub async fn get_user_credentials(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_credentials(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match User::get_credentials(&db.pool, id.into_inner()).await {
         Ok(c) => respond::found(c),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_profile(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_profile(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match User::get_profile(&db.pool, id.into_inner()).await {
         Ok(p) => respond::found(p),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_records(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_records(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match User::get_records_created(&db.pool, id.into_inner()).await {
         Ok(r) => respond::found(r),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_items(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_items(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match User::get_items_created(&db.pool, id.into_inner()).await {
         Ok(i) => respond::found(i),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_fields(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_fields(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match User::get_fields_created(&db.pool, id.into_inner()).await {
         Ok(f) => respond::found(f),
         Err(e) => respond::err(e),
     }
 }
 // TODO unimplemented
-pub async fn get_user_groups(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_groups(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match User::get_groups_created(&db.pool, id.into_inner()).await {
         Ok(g) => respond::found(g),
         Err(e) => respond::err(e),
@@ -272,13 +271,13 @@ pub async fn link_user_to_user() -> impl Responder {
 pub async fn get_all_user_user_links() -> impl Responder {
     "".to_string()
 }
-pub async fn get_user_level(db: Data<Db>, user_id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_level(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     match User::get_level(&db.pool, user_id.into_inner()).await {
         Ok(u) => respond::ok(u),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_user_badges(db: Data<Db>, user_id: Path<Uuid>) -> impl Responder {
+pub async fn get_user_badges(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     match User::get_badges(&db.pool, user_id.into_inner()).await {
         Ok(u) => respond::ok(u),
         Err(e) => respond::err(e),

@@ -1,21 +1,17 @@
-use uuid::Uuid;
-use api_db::Model;
+use api_db::{Model, Id};
 use actix_web::{guard::Guard, HttpRequest, HttpResponse, Responder};
 use crate::types::{Status, now, private, Expiration};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
-use derive_more::Display;
-
-use super::Account;
 
 #[derive(Debug,  FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Session {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     #[serde(default = "Expiration::two_days")]
-    pub expires: NaiveDateTime,
+    pub expires: Expiration,
     pub session_token: String,
     pub access_token: String,
     #[serde(default = "now")]
@@ -48,8 +44,8 @@ impl Model for Session {
 impl Default for Session {
     fn default() -> Self {
         Session {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             session_token: String::new(),
             access_token: String::new(),
             expires: Expiration::two_days(),
@@ -75,14 +71,14 @@ impl Session {
         Self { access_token: token, ..self }
     }
 
-    pub fn get_access_token() -> Uuid {
-        Uuid::new_v4()
+    pub fn get_access_token() -> Id {
+        Id::gen()
     }
-    pub fn get_session_token() -> Uuid {
-        Uuid::new_v4()
+    pub fn get_session_token() -> Id {
+        Id::gen()
     }
 
-    pub async fn update_by_id(db: &PgPool, id: Uuid, r: Session)
+    pub async fn update_by_id(db: &PgPool, id: Id, r: Session)
         -> anyhow::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
             UPDATE     sessions
@@ -101,7 +97,7 @@ impl Session {
         Ok(res)
     }
 
-    pub async fn get_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn get_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let sess = sqlx::query_as::<Postgres, Self>("SELECT * FROM sesions WHERE user_id = $1")
             .bind(user_id)
             .fetch_optional(db).await?;
@@ -109,13 +105,13 @@ impl Session {
     }
 
     //TODO do this more programmatically...
-    pub async fn fetch_by_access_token(db: &PgPool, token: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn fetch_by_access_token(db: &PgPool, token: Id) -> anyhow::Result<Option<Self>> {
         let sess = sqlx::query_as::<Postgres, Self>("select * from sessions where access_token = $1")
             .bind(token)
             .fetch_optional(db).await?;
         Ok(sess)
     }
-    pub async fn fetch_by_refresh_token(db: &PgPool, token: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn fetch_by_refresh_token(db: &PgPool, token: Id) -> anyhow::Result<Option<Self>> {
         let sess = sqlx::query_as::<Postgres, Self>("select * from sessions where refresh_token = $1")
             .bind(token)
             .fetch_optional(db).await?;
@@ -124,7 +120,7 @@ impl Session {
 
     pub async fn create_two_day_session(
         db: &PgPool,
-        user_id: Uuid,
+        user_id: Id,
     ) -> anyhow::Result<Self> {
         let session_token = String::new();
         let access_token = String::new();
@@ -140,7 +136,7 @@ impl Session {
         Ok(res)
     }
 
-    pub async fn delete_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn delete_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let sess = sqlx::query_as::<Postgres, Self>("
             DELETE FROM sessions WHERE user_id = $1 returning id")
             .bind(user_id)
@@ -148,7 +144,7 @@ impl Session {
         Ok(sess)
     }
 
-    /* pub async fn delete_by_id(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Uuid>> {
+    /* pub async fn delete_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Id>> {
         let sess = sqlx::query_scalar("DELETE FROM sessions WHERE id = $1 returning id")
             .bind(id)
             .fetch_optional(db).await?;

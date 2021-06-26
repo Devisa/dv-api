@@ -1,4 +1,4 @@
-use api_db::Db;
+use api_db::{Model, Id, Db};
 use actix_web::{
     HttpRequest,
     web::{self, ServiceConfig}, Responder

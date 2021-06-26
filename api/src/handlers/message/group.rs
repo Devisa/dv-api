@@ -1,8 +1,9 @@
-use crate::{db::Db, util::respond};
-use api_common::models::group::Group;
-use api_common::models::Model;
-use api_common::models::messages::DirectGroupMessage;
-use uuid::Uuid;
+use crate::util::respond;
+use api_common::models::{
+    group::Group,
+    messages::DirectGroupMessage,
+};
+use api_db::{Model, Id, Db};
 use actix_web::web::{Json, Data, Path, HttpRequest,  ServiceConfig, self};
 use actix_web::Responder;
 
@@ -45,13 +46,13 @@ pub async fn new_group_dm(
 pub async fn reply_to_group_dm(
     db: Data<Db>,
     group_dm: Json<DirectGroupMessage>,
-    replies_to_id: Path<Uuid>,
+    replies_to_id: Path<Id>,
 ) -> impl Responder
 {
     match DirectGroupMessage::reply_to(&db.pool,
         replies_to_id.into_inner(),
-        group_dm.sender_id,
-        group_dm.group_id,
+        group_dm.clone().sender_id,
+        group_dm.clone().group_id,
         group_dm.content.clone(),
     ).await {
         Ok(msg) => respond::ok(msg),
@@ -64,13 +65,13 @@ pub async fn get_all(db: Data<Db>) -> impl Responder {
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_all_to_group(db: Data<Db>, group_id: Path<Uuid>) -> impl Responder {
+pub async fn get_all_to_group(db: Data<Db>, group_id: Path<Id>) -> impl Responder {
     match DirectGroupMessage::sent_to_group_id(&db.pool, group_id.into_inner()).await {
         Ok(messages) => respond::ok(messages),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_all_from_sender(db: Data<Db>, sender_id: Path<Uuid>) -> impl Responder {
+pub async fn get_all_from_sender(db: Data<Db>, sender_id: Path<Id>) -> impl Responder {
     match DirectGroupMessage::sent_by_sender_id(&db.pool, sender_id.into_inner()).await {
         Ok(messages) => respond::ok(messages),
         Err(e) => respond::err(e),
@@ -88,7 +89,7 @@ pub async fn get_all_replies(db: Data<Db>) -> impl Responder {
         Err(e) => respond::err(e),
     }
 }
-pub async fn all_from_sender_to_group(db: Data<Db>, path: Path<(Uuid, Uuid)>) -> impl Responder {
+pub async fn all_from_sender_to_group(db: Data<Db>, path: Path<(Id, Id)>) -> impl Responder {
     let ( group_id, sender_id ) = path.into_inner();
     match DirectGroupMessage::all_from_sender_to_group(&db.pool, sender_id, group_id).await {
         Ok(messages) => respond::ok(messages),

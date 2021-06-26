@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use crate::types::now;
-use uuid::Uuid;
+use api_db::types::Id;
 use crate::models::Model;
 use sqlx::{FromRow, Postgres, PgPool, prelude::*, types::{
         chrono::NaiveDateTime,
@@ -8,14 +8,14 @@ use sqlx::{FromRow, Postgres, PgPool, prelude::*, types::{
 
 #[derive(Debug, Clone, PartialEq, FromRow, Serialize, Deserialize)]
 pub struct DirectUserMessage {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub sender_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub recipient_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub sender_id: Id,
+    #[serde(default = "Id::nil")]
+    pub recipient_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub replies_to_id: Option<Uuid>,
+    pub replies_to_id: Option<Id>,
     pub content: String,
     #[serde(default = "Vec::new")]
     pub attachments: Vec<String>,
@@ -52,11 +52,11 @@ impl Model for DirectUserMessage {
 impl DirectUserMessage {
 
     pub fn new(
-        sender_id: Uuid,
-        recipient_id: Uuid,
+        sender_id: Id,
+        recipient_id: Id,
         content: String) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             sender_id,
             recipient_id,
             content,
@@ -70,13 +70,13 @@ impl DirectUserMessage {
 
     pub async fn reply_to(
         db: &PgPool,
-        target_id: Uuid,
-        sender_id: Uuid,
-        recipient_id: Uuid,
+        target_id: Id,
+        sender_id: Id,
+        recipient_id: Id,
         content: String ) -> anyhow::Result<DirectUserMessage>
     {
         let rs=Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             sender_id, recipient_id, content,
             replies_to_id: Some(target_id),
             attachments: Vec::new(),
@@ -97,7 +97,7 @@ impl DirectUserMessage {
     }
 
     pub async fn get_all_thread_starters_with_user(
-        db: &PgPool, id: Uuid) -> sqlx::Result<Vec<Self>> {
+        db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE replies_to_id IS NULL
@@ -109,7 +109,7 @@ impl DirectUserMessage {
     }
 
     pub async fn get_all_replies_with_user(
-        db: &PgPool, id: Uuid) -> sqlx::Result<Vec<Self>> {
+        db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE replies_to_id IS NULL
@@ -129,7 +129,7 @@ impl DirectUserMessage {
         Ok(msg)
     }
 
-    pub async fn send(&self, db: &PgPool) -> sqlx::Result<Self> {
+    pub async fn send(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
             INSERT INTO direct_user_messages
             (sender_id, recipient_id, replies_to_id,
@@ -147,7 +147,7 @@ impl DirectUserMessage {
         Ok(res)
 
     }
-    pub async fn sent_to_user_id(db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn sent_to_user_id(db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE recipient_id = $1
@@ -157,7 +157,7 @@ impl DirectUserMessage {
         Ok(msg)
     }
 
-    pub async fn sent_by_user_id(db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn sent_by_user_id(db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE sender_id = $1
@@ -167,7 +167,7 @@ impl DirectUserMessage {
         Ok(msg)
     }
 
-    pub async fn sent_between_user_ids(db: &PgPool, user_id1: Uuid, user_id2: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn sent_between_user_ids(db: &PgPool, user_id1: Id, user_id2: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE sender_id = $1, recipient_id = $2
@@ -178,7 +178,7 @@ impl DirectUserMessage {
         Ok(msg)
     }
 
-    pub async fn get_replies_to_dm(db: &PgPool, direct_user_message_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_replies_to_dm(db: &PgPool, direct_user_message_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE replies_to_id = $1

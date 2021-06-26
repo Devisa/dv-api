@@ -1,7 +1,7 @@
-use crate::{util::respond, db::Db};
-use api_common::models::{Model, verification::VerificationRequest};
+use crate::util::respond;
+use api_common::models::verification::VerificationRequest;
 use sqlx::{prelude::*, postgres::Postgres};
-use uuid::Uuid;
+use api_db::{Db, Model, Id};
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::StatusCode, post, web::{self, ServiceConfig, Path, Json, Data}};
 
 pub fn routes(cfg: &mut ServiceConfig) {
@@ -22,14 +22,14 @@ pub async fn get_all(db: Data<Db>) -> impl Responder {
     }
 }
 
-pub async fn get_by_user_id(db: Data<Db>, user_id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_user_id(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     match VerificationRequest::get(&db.pool, user_id.into_inner()).await {
         Ok(ver) => respond::ok(ver),
         Err(e) => respond::err(e)
     }
 }
 
-pub async fn delete_by_user_id(db: Data<Db>, user_id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_user_id(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     match VerificationRequest::delete(&db.pool, user_id.into_inner()).await {
         Ok(ver) => respond::ok(ver),
         Err(e) => respond::err(e)

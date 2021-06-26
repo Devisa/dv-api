@@ -1,7 +1,6 @@
 use serde::{Serialize, Deserialize};
 use crate::types::{GroupRole, now};
-use uuid::Uuid;
-use api_db::types::Model;
+use api_db::types::{Id, Model};
 use sqlx::{
     prelude::*, PgPool, Postgres,
     FromRow, types::chrono::NaiveDateTime,
@@ -9,14 +8,14 @@ use sqlx::{
 
 #[derive(Debug, Clone, PartialEq, FromRow, Serialize, Deserialize)]
 pub struct DirectGroupMessage {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub sender_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub group_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub sender_id: Id,
+    #[serde(default = "Id::nil")]
+    pub group_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub replies_to_id: Option<Uuid>,
+    pub replies_to_id: Option<Id>,
     pub content: String,
     #[serde(default = "Vec::new")]
     pub attachments: Vec<String>,
@@ -54,12 +53,12 @@ impl Model for DirectGroupMessage {
 
 #[derive(Debug, Clone, PartialEq, FromRow, Serialize, Deserialize)]
 pub struct DirectGroupMessageReadReceipt {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub direct_group_msg_id: Uuid,
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub group_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub direct_group_msg_id: Id,
+    #[serde(default = "Id::nil")]
+    pub group_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
     pub read_at: Option<NaiveDateTime>,
     #[serde(default = "now")]
@@ -69,11 +68,11 @@ pub struct DirectGroupMessageReadReceipt {
 impl DirectGroupMessage {
 
     pub fn new(
-        sender_id: Uuid,
-        group_id: Uuid,
+        sender_id: Id,
+        group_id: Id,
         content: String) -> DirectGroupMessage {
         let msg = Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             restrict_to_role: None,
             sender_id,
             group_id,
@@ -88,14 +87,14 @@ impl DirectGroupMessage {
 
     pub async fn reply_to(
         db: &PgPool,
-        replies_to: Uuid,
-        sender_id: Uuid,
-        group_id: Uuid,
+        replies_to: Id,
+        sender_id: Id,
+        group_id: Id,
         content: String
         ) -> anyhow::Result<Self>
     {
         let res =  Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             replies_to_id: Some(replies_to),
             group_id, sender_id, content,
             updated_at: now(),
@@ -128,7 +127,7 @@ impl DirectGroupMessage {
         Ok(msg)
     }
     pub async fn get_all_thread_starters_with_group(
-        db: &PgPool, id: Uuid) -> sqlx::Result<Vec<Self>> {
+        db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE replies_to_id IS NULL
@@ -140,7 +139,7 @@ impl DirectGroupMessage {
     }
 
     pub async fn get_all_replies_with_group(
-        db: &PgPool, id: Uuid) -> sqlx::Result<Vec<Self>> {
+        db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_user_messages
             WHERE replies_to_id IS NULL
@@ -158,10 +157,10 @@ impl DirectGroupMessage {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id
             ")
-            .bind(self.id)
-            .bind(self.sender_id)
-            .bind(self.group_id)
-            .bind(self.replies_to_id)
+            .bind(&self.id)
+            .bind(&self.sender_id)
+            .bind(&self.group_id)
+            .bind(&self.replies_to_id)
             .bind(self.sent_at)
             .bind(self.restrict_to_role.as_ref())
             .bind(&self.attachments)
@@ -170,7 +169,7 @@ impl DirectGroupMessage {
         Ok(res)
 
     }
-    pub async fn sent_to_group_id(db: &PgPool, group_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn sent_to_group_id(db: &PgPool, group_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_group_messages
             WHERE group_id = $1
@@ -180,7 +179,7 @@ impl DirectGroupMessage {
         Ok(msg)
     }
 
-    pub async fn sent_by_sender_id(db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn sent_by_sender_id(db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_group_messages
             WHERE sender_id = $1
@@ -190,7 +189,7 @@ impl DirectGroupMessage {
         Ok(msg)
     }
 
-    pub async fn all_from_sender_to_group(db: &PgPool, user_id: Uuid, group_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn all_from_sender_to_group(db: &PgPool, user_id: Id, group_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_group_messages
             WHERE sender_id = $1, group_id = $2
@@ -201,7 +200,7 @@ impl DirectGroupMessage {
         Ok(msg)
     }
 
-    pub async fn get_replies_to_dm(db: &PgPool, direct_group_message_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_replies_to_dm(db: &PgPool, direct_group_message_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_group_messages
             WHERE replies_to_id = $1

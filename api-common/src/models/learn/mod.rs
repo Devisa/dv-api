@@ -14,7 +14,7 @@ pub mod knowledge;
 // use crate::{
 //     db::Db,
 //     util::respond,
-//     types::{Status, now, private}
+//     types::{Id, Status, now, private}
 // };
 // use serde::{Serialize, Deserialize};
 // use sqlx::{

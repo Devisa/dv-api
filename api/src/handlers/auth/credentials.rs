@@ -1,21 +1,28 @@
-use actix_web::http::header::ContentType;
 use std::sync::Arc;
-use crate::context::ApiSession;
-use anyhow::Context;
-use api_common::auth::jwt;
-use api_common::auth::jwt::Role;
-use api_common::models::{account::{Account, AccountProvider}, Session};
+use crate::{
+    context::ApiSession,
+    util::respond
+};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-use actix_web::http::{HeaderName, header, HeaderValue};
-use actix_web::cookie::{Cookie, CookieBuilder};
-use api_db::{Db, Model};
-use crate::util::respond;
+use api_db::{Id, Db, Model};
 use actix_web::{
     HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
+    http::header::{self, ContentType},
+    cookie::Cookie,
     web::{self, ServiceConfig, Json, Data, Form, Path}
 };
-use api_common::{models::{Profile,  auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}}, types::Gender};
+use api_common::{
+    auth::jwt::{self, Role},
+    models::{
+        Profile, Session,
+        auth::CredentialsSignupIn,
+        Account,
+        credentials::{CredentialsIn, Credentials},
+        user::{User, UserIn}
+    },
+    types::Gender
+};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -36,49 +43,47 @@ pub fn routes(cfg: &mut ServiceConfig) {
 /// (I know all the cloning is stupid and nooby af im still learning)
 pub async fn signup_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsSignup>) -> actix_web::Result<HttpResponse> {
     let db = db.into_inner();
-    let user = User::new(Some(data.clone().name), Some(data.clone().email), data.clone().image);
+    let user = User::new(Some(data.clone().name), Some(data.clone().email), data.clone().image)
+        .insert(&db.pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Error inserting user: {:?}", e);
+            sentry::capture_error(&e);
+            e
+        }).expect("Could not insert user");
     tracing::info!("Created user.");
-    let profile = Profile { user_id: user.id, ..Default::default() };
+    let profile = Profile { user_id: user.clone().id, ..Default::default() }
+        .insert(&db.pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Error inserting profile: {:?}", e);
+            sentry::capture_error(&e);
+            e
+        }).expect("Could not insert profile");
     tracing::info!("Created profile.");
-    let creds = Credentials::create(user.id, data.clone().username, data.clone().password).hash();
+    let creds = Credentials::create(user.clone().id, data.clone().username, data.clone().password)
+        .hash()
+        .insert(&db.pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Error inserting creds: {:?}", e);
+            sentry::capture_error(&e);
+            e
+        }).expect("Could not insert creds");
     tracing::info!("Created creds.");
-    let acc = AccountProvider::devisa_creds_account(
-        user.id,
-        creds.id,
-        None,
-        None,
-        None
-    );
-    tracing::info!("Created user, creds, and account -- now inserting user....");
-    let user = user.insert(&db.pool).await;
-
-    tracing::info!("now inserting creds....");
-    let creds = creds.insert(&db.pool).await;
-    if let Ok(creds) = creds {
-        tracing::info!("now inserting account....");
-        let acct = acc.insert(&db.pool).await;
-
-        tracing::info!("now inserting profile....");
-        let profile = profile.insert(&db.pool).await;
-
-        if user.is_ok() && acct.is_ok() && profile.is_ok() {
-            return Ok(HttpResponse::Ok()
-                .json(creds)
-                .with_header(("Content-Type", "application/json"))
-                .respond_to(&req));
-        }
-        return Ok(HttpResponse::BadRequest()
-                .insert_header(("Content-Type", "application/json"))
-                .body(format!(
-                        "Internal error: Inserted creds, but one failure:\n
-                         User insert: {}\n
-                         Acct insert: {}\n
-                         Profile insert: {}\n",
-                         user.is_ok(), acct.is_ok(), profile.is_ok()
-                 ))
-                .respond_to(&req));
-    }
-    return Ok(HttpResponse::Forbidden().body("Invalid credentials"));
+    let acc = Account::new_devisa_creds_account(user.id.clone(),creds.id.clone())
+        .insert(&db.pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Error inserting account: {:?}", e);
+            sentry::capture_error(&e);
+            e
+        }).expect("Could not insert account");
+    tracing::info!("Created account ");
+    return Ok(HttpResponse::Ok()
+        .json(creds)
+        .with_header(("Content-Type", "application/json"))
+        .respond_to(&req));
 }
 
 /// NOTE: Credentials login -- three phases
@@ -91,14 +96,14 @@ pub async fn login_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsI
     match ver.await {
         Ok(creds) => {
             tracing::info!("New user logged in! Username {:?}", data.username);
-            let session = Session::create_two_day_session(&db.pool, creds.user_id)
+            let session = Session::create_two_day_session(&db.pool, creds.clone().user_id)
                 .await
                 .map_err(|e| {
                     tracing::info!("Could not create session! {}", e);
                     respond::err(e)
                 })
                 .unwrap_or_default();
-            let jwt = jwt::encode_token(creds.user_id, session.id, "dvsa-creds".into(), Role::User.to_string(), 48)
+            let jwt = jwt::encode_token(creds.clone().user_id, session.clone().id, "dvsa-creds".into(), Role::User.to_string(), 48)
                 .map_err(|e| {
                     tracing::info!("Err creating JWT: {:?}", e);
                     sentry::capture_error(&e.root_cause());

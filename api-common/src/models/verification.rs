@@ -1,14 +1,14 @@
 use actix::prelude::*;
 use actix_web::{guard::Post, Responder};
-use crate::types::{Status, now, private};
+use crate::types::{Id, Status, now, private};
 use sqlx::{FromRow, Postgres, postgres::PgPool, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct VerificationRequest {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     pub identifier: String,
     pub token: String,
     pub expires: NaiveDateTime,
@@ -19,7 +19,7 @@ pub struct VerificationRequest {
 impl Default for VerificationRequest {
     fn default() -> Self {
         VerificationRequest {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             identifier: String::new(),
             token: String::new(),
             expires: Utc::now().naive_utc(),
@@ -54,21 +54,21 @@ impl VerificationRequest {
         Ok(ver)
     }
 
-    pub async fn get_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn get_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let ver = sqlx::query_as::<Postgres, Self>("SELECT * FROM verification_requests WHERE user_id = $1")
             .bind(user_id)
             .fetch_optional(db).await?;
         Ok(ver)
     }
 
-    pub async fn delete_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Uuid>> {
+    pub async fn delete_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Id>> {
         let ver = sqlx::query_scalar("DELETE FROM verification_requests WHERE user_id = $1 returning id")
             .bind(user_id)
             .fetch_optional(db).await?;
         Ok(ver)
     }
 
-    pub async fn delete_by_id(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Uuid>> {
+    pub async fn delete_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Id>> {
         let ver = sqlx::query_scalar("DELETE FROM verification_requests WHERE id = $1 returning id")
             .bind(id)
             .fetch_optional(db).await?;

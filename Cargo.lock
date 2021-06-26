@@ -817,9 +817,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "derive_more",
  "libsqlite3-sys",
  "openssl",
  "rustls",
+ "serde",
  "sqlx",
  "tracing",
  "tracing-futures",

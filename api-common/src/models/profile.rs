@@ -1,7 +1,6 @@
 use crate::types::*;
 use chrono::NaiveDate;
 use url::Url;
-use uuid::Uuid;
 use super::Model;
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -12,10 +11,10 @@ use sqlx::{
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Profile {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bio: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -84,8 +83,8 @@ impl Model for Profile {
 impl Default for Profile {
     fn default() -> Self {
         Profile {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             bio: None,
             cover_image: None,
             birthday: None,
@@ -114,14 +113,14 @@ impl Profile {
         Ok(res)
     }
 
-    pub async fn get(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn get(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Profile>("SELECT * FROM profiles WHERE id = ,$1")
             .bind(id)
             .fetch_optional(db).await?;
         Ok(res)
     } */
 
-    pub async fn update<'a, T>(&self, db: &PgPool, field: String, new_val: T)
+    pub async fn update<'a, T>(self, db: &PgPool, field: String, new_val: T)
         -> anyhow::Result<Self>
     where
         T: sqlx::Encode<'a, Postgres> + sqlx::Type<Postgres> + Send + 'a,
@@ -138,7 +137,7 @@ impl Profile {
         Ok(res)
     }
 
-    pub async fn update_by_id<'a, T>(db: &PgPool, id: Uuid, field: String, new_val: T)
+    pub async fn update_by_id<'a, T>(db: &PgPool, id: Id, field: String, new_val: T)
         -> anyhow::Result<Self>
     where
         T: sqlx::Encode<'a, Postgres> + sqlx::Type<Postgres> + Send + 'a,
@@ -155,14 +154,14 @@ impl Profile {
         Ok(res)
     }
 
-    pub async fn get_all_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Self>> {
+    pub async fn get_all_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Profile>("SELECT * FROM profiles WHERE user_id = ?")
             .bind(user_id)
             .fetch_all(db).await?;
         Ok(res)
     }
 
-    /* pub async fn delete(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Uuid>> {
+    /* pub async fn delete(db: &PgPool, id: Id) -> anyhow::Result<Option<Id>> {
         let res = sqlx::query_scalar("DELETE FROM profiles WHERE id = ,$1 RETURNING id")
             .bind(id)
             .fetch_optional(db).await?;

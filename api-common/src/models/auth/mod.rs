@@ -1,11 +1,9 @@
-use uuid::Uuid;
 use sqlx::{
     postgres::{Postgres, PgPool},
     types::chrono::NaiveDate,
 };
-use api_db::types::Model;
-use crate::types::now;
-use crate::auth::jwt::*;
+use api_db::types::{Id, Model};
+use crate::types::{now, AccessToken, SessionToken, RefreshToken};
 use serde::{Serialize, Deserialize};
 
 use super::{Account, Credentials, Profile, User, account::AccountProvider, credentials::CredentialsIn, user::UserIn};
@@ -14,11 +12,11 @@ use super::{Account, Credentials, Profile, User, account::AccountProvider, crede
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CredentialsSignupIn {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user_id: Option<Uuid>,
+    pub user_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub creds_id: Option<Uuid>,
+    pub creds_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile_id: Option<Uuid>,
+    pub profile_id: Option<Id>,
     pub username: String,
     pub password: String,
     pub name: String,
@@ -73,8 +71,8 @@ impl Into<User> for CredentialsSignupIn {
 impl Into<Account> for CredentialsSignupIn {
     fn into(self) -> Account {
         Account {
-            id: Uuid::nil(),
-            user_id: self.user_id.unwrap_or(Uuid::nil()),
+            id: Id::nil(),
+            user_id: self.user_id.unwrap_or(Id::nil()),
             ..Default::default()
         }
     }
@@ -106,34 +104,26 @@ impl CredentialsSignupIn {
     ///     *In that order* -> VerificationRequest to confirm email
     ///     -> UserLevel for gamification element
     pub async fn signup_credentials(self, db: &PgPool) -> sqlx::Result<User> {
-        let creds: CredentialsIn = self.clone().into();
-        let profile: Profile = self.clone().into();
-        let user: User = self.clone().into();
-
-        // 1. Create the user's base user model
-        let user = user.insert(&db).await?; //Full struct with user id
-
-        // 2. Use the created user to create credentials
+        let user = User::new(Some(self.name), Some(self.email), self.image)
+            .insert(&db).await?;
         let creds = Credentials {
-            id: Uuid::new_v4(),
-            user_id: user.id,
-            username: creds.username,
-            password: creds.password
-        };
-        let creds = creds.hash().insert(&db).await?;  //Full struct with creds id
-        // 3. Use the created credentials and user to create a Devisa acct
-        let acct: Account = AccountProvider::devisa_creds_account(
-            user.id,
-            creds.id,
-            None, // accesss token
-            None, // refresh token
-            None //Access token expires
-        );
-        acct.insert(&db).await?;
-
-        // 4. Finally, create a new (likely empty) profile for the user
-        let profile = Profile { user_id: user.id, ..profile };
-        profile.insert(&db).await?;
+            id: Id::gen(),
+            user_id: Id::from(user.clone().id),
+            username: self.username,
+            password: self.password
+        }
+            .hash()
+            .insert(&db).await?;
+        let profile: Profile = Profile {
+            id: Id::gen(),
+            user_id: user.clone().id,
+            ..Default::default()
+        }
+            .insert(&db).await?;
+        let acct: Account = Account::new_devisa_creds_account(
+            Id::from(user.clone().id), creds.id,
+        )
+            .insert(&db).await?;
         Ok(user)
     }
 
@@ -146,38 +136,3 @@ impl CredentialsSignupIn {
     }
 }
 
-pub async fn signup_credentials(db: &PgPool, user: User, creds: CredentialsIn) -> sqlx::Result<User> {
-
-    let profile: Profile = Profile { user_id: user.id, ..Default::default() };
-    let creds: Credentials = Credentials {
-        user_id: user.id,
-        username: creds.username,
-        password: creds.password,
-        id: Uuid::new_v4(),
-    }.hash();
-    // 1. Create the user's base user model
-
-    // 2. Use the created user to create credentials
-    let creds = Credentials {
-        id: Uuid::new_v4(),
-        user_id: user.id,
-        username: creds.username,
-        password: creds.password
-    };
-    let creds = creds.hash().insert(&db).await?;  //Full struct with creds id
-    // 3. Use the created credentials and user to create a Devisa acct
-    let acct: Account = AccountProvider::devisa_creds_account(
-        user.id,
-        creds.id,
-        None, // accesss token
-        None, // refresh token
-        None //Access token expires
-    );
-    let user = user.insert(&db).await?; //Full struct with user id
-    let acct = acct.insert(&db).await?;
-    let creds = creds.insert(&db).await?;
-    let profile = profile.insert(&db).await?;
-
-    // 4. Finally, create a new (likely empty) profile for the user
-    Ok(user)
-}

@@ -1,5 +1,5 @@
 use crate::{
-    types::{Status, now, private, Feeling},
+    types::{Id, Status, now, private, Feeling},
     models::{
         topic::Topic,
         link::{LinkedTo, Linked},
@@ -13,12 +13,12 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Post {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if="Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub responds_to_id: Option<Uuid>,
+    pub responds_to_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
     pub content: String,
@@ -36,12 +36,12 @@ pub struct Post {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GroupPost {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if="Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub group_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub post_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub group_id: Id,
+    #[serde(default = "Id::nil")]
+    pub post_id: Id,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
     #[serde(default = "now")]
@@ -75,9 +75,9 @@ impl Model for Post {
 
 impl GroupPost {
 
-    pub fn new(group_id: Uuid, post_id: Uuid) -> Self {
+    pub fn new(group_id: Id, post_id: Id) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             group_id, post_id,
             created_at: Utc::now().naive_utc(),
             updated_at: Utc::now().naive_utc()
@@ -105,9 +105,9 @@ impl Model for GroupPost {
 
 impl Post {
 
-    pub fn new(user_id: Uuid, content: String, responds_to: Option<Uuid>, image: Option<String>, feeling: Option<Feeling>) -> Self {
+    pub fn new(user_id: Id, content: String, responds_to: Option<Id>, image: Option<String>, feeling: Option<Feeling>) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             responds_to_id: responds_to,
             feeling,
             image: None,
@@ -119,7 +119,7 @@ impl Post {
         }
     }
 
-    pub async fn get_in_topic(db: &PgPool, topic_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_in_topic(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM posts
             INNER JOIN topic_posts ON topic_posts.post_id = posts.item_id
@@ -130,7 +130,7 @@ impl Post {
             .fetch_all(db).await?;
         Ok(res)
     }
-    pub async fn get_in_group(db: &PgPool, group_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_in_group(db: &PgPool, group_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM posts
             INNER JOIN group_posts ON group_posts.post_id = posts.item_id
@@ -141,7 +141,7 @@ impl Post {
             .fetch_all(db).await?;
         Ok(res)
     }
-    pub async fn get_all_by_user(db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_all_by_user(db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM posts WHERE user_id =, $1
         ")
@@ -149,7 +149,7 @@ impl Post {
             .fetch_all(db).await?;
         Ok(res)
     }
-    pub async fn insert_group(self, db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn insert_group(self, db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM posts WHERE user_id =, $1
         ")
@@ -166,23 +166,23 @@ impl Post {
         return Self { private: true, ..self };
     }
 
-    pub async fn add_to_book(self, db: &PgPool, book_id: Uuid, link_id: Option<Uuid>) -> sqlx::Result<Self> {
+    pub async fn add_to_book(self, db: &PgPool, book_id: Id, link_id: Option<Id>) -> sqlx::Result<BookPost> {
         let entry = BookPost {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             book_id,
             post_id: self.id,
             link_id,
         };
         let res = entry.insert(&db).await?;
-        Ok(self)
+        Ok(res)
     }
-    pub async fn add_to_topic(self, db: &PgPool, topic_id: Uuid, link_id: Option<Uuid>) -> sqlx::Result<TopicPost> {
+    pub async fn add_to_topic(self, db: &PgPool, topic_id: Id, link_id: Option<Id>) -> sqlx::Result<TopicPost> {
         let entry = TopicPost::new(self.id, topic_id, link_id)
             .insert(db).await?;
         Ok(entry)
     }
 
-    pub async fn insert_reply(self, db: &PgPool, post_id: Uuid) -> sqlx::Result<Self> {
+    pub async fn insert_reply(self, db: &PgPool, post_id: Id) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
         INSERT INTO posts (id, user_id, title, content,
             image, status, private, created_at, updated_at, feeling, responds_to_id)
@@ -201,7 +201,7 @@ impl Post {
         Ok(res)
     }
 
-    pub async fn add_to_group(db: &PgPool, group_id: Uuid, post_id: Uuid) -> sqlx::Result<GroupPost> {
+    pub async fn add_to_group(db: &PgPool, group_id: Id, post_id: Id) -> sqlx::Result<GroupPost> {
         let group_post = GroupPost::new(group_id, post_id).insert(db).await?;
         Ok(group_post)
     }
@@ -224,17 +224,17 @@ impl Post {
             .fetch_all(db).await?;
         Ok(res)
     }
-    pub async fn add_feel_reply(self, db: &PgPool, user_id: Uuid, feeling: Feeling) -> sqlx::Result<PostFeelingResponse> {
+    pub async fn add_feel_reply(self, db: &PgPool, user_id: Id, feeling: Feeling) -> sqlx::Result<PostFeelingResponse> {
         let fr = PostFeelingResponse::new(self.id, user_id, feeling)
             .insert(db).await?;
         Ok(fr)
     }
-    pub async fn add_topic(self, db: &PgPool, topic_id: Uuid, link_id: Option<Uuid>) -> sqlx::Result<TopicPost> {
+    pub async fn add_topic(self, db: &PgPool, topic_id: Id, link_id: Option<Id>) -> sqlx::Result<TopicPost> {
         let fr = TopicPost::new(self.id, topic_id, link_id)
             .insert(db).await?;
         Ok(fr)
     }
-    pub async fn add_group(self, db: &PgPool, group_id: Uuid) -> sqlx::Result<GroupPost> {
+    pub async fn add_group(self, db: &PgPool, group_id: Id) -> sqlx::Result<GroupPost> {
         let res = sqlx::query_as::<Postgres, GroupPost>("
             INSERT INTO group_posts (group_id, post_id)
             VALUES ($1, $2)
@@ -250,14 +250,14 @@ impl Post {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TopicPost {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if="Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub post_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub topic_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub post_id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub link_id: Option<Uuid>,
+    pub link_id: Option<Id>,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
     #[serde(default = "now")]
@@ -266,9 +266,9 @@ pub struct TopicPost {
 impl Default for TopicPost {
     fn default() -> Self {
         Self {
-            id: Uuid::new_v4(),
-            post_id: Uuid::nil(),
-            topic_id: Uuid::nil(),
+            id: Id::gen(),
+            post_id: Id::nil(),
+            topic_id: Id::nil(),
             link_id: None,
             created_at: now(),
             updated_at: now(),
@@ -277,12 +277,12 @@ impl Default for TopicPost {
 }
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PostFeelingResponse {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if="Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub post_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub post_id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub feeling: Feeling,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
@@ -290,11 +290,11 @@ pub struct PostFeelingResponse {
     pub updated_at: NaiveDateTime,
 }
 impl PostFeelingResponse {
-    pub fn new(post_id: Uuid, user_id: Uuid, feeling: Feeling,) -> Self {
+    pub fn new(post_id: Id, user_id: Id, feeling: Feeling,) -> Self {
         Self {
-            id: Uuid::new_v4(),
-            post_id: Uuid::nil(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            post_id: Id::nil(),
+            user_id: Id::nil(),
             feeling,
             created_at: now(),
             updated_at: now(),
@@ -303,11 +303,11 @@ impl PostFeelingResponse {
 }
 impl TopicPost {
 
-    pub fn new(post_id: Uuid, topic_id: Uuid, link_id: Option<Uuid>) -> Self {
+    pub fn new(post_id: Id, topic_id: Id, link_id: Option<Id>) -> Self {
         Self {
-            id: Uuid::new_v4(),
-            post_id: Uuid::nil(),
-            topic_id: Uuid::nil(),
+            id: Id::gen(),
+            post_id: Id::nil(),
+            topic_id: Id::nil(),
             link_id: None,
             created_at: now(),
             updated_at: now(),
@@ -354,7 +354,7 @@ impl Model for PostFeelingResponse {
 impl Linked for TopicPost {
     type Left = Topic;
     type Right = Post;
-    fn new_basic(left_id: Uuid, right_id: Uuid, link_id: Option<Uuid>) -> Self {
+    fn new_basic(left_id: Id, right_id: Id, link_id: Option<Id>) -> Self {
         Self {
             topic_id: left_id,
             post_id: right_id,
@@ -362,13 +362,13 @@ impl Linked for TopicPost {
         }
 
     }
-    fn link_id(self) -> Option<Uuid> {
+    fn link_id(self) -> Option<Id> {
         self.link_id
     }
-    fn left_id(self) -> Uuid {
+    fn left_id(self) -> Id {
         self.topic_id
     }
-    fn right_id(self) -> Uuid {
+    fn right_id(self) -> Id {
         self.post_id
     }
 }

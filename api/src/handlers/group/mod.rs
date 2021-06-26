@@ -1,6 +1,6 @@
 use crate::{db::Db, util::respond};
-use uuid::Uuid;
-use api_common::models::{Model, group::{Group, GroupUser}};
+use api_db::{Model, Id};
+use api_common::models::group::{Group, GroupUser};
 use sqlx::{prelude::*, postgres::Postgres};
 use actix_web::{
     http::StatusCode,
@@ -53,28 +53,28 @@ pub async fn get_all(db: Data<Db>) -> impl Responder {
     }
 }
 
-pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Group::get(&db.pool, id.into_inner()).await {
         Ok(Some(group)) => respond::found(group),
         Ok(None) => respond::not_found("No group with id "),
         Err(e) => respond::err(e),
     }
 }
-pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Group::delete(&db.pool, id.into_inner()).await {
         Ok(Some(group)) => respond::found(group),
         Ok(None) => respond::not_found("No group with id"),
         Err(e) => respond::err(e),
     }
 }
-pub async fn update_name(db: Data<Db>, id: Path<Uuid>, name: web::Query<String>) -> impl Responder {
+pub async fn update_name(db: Data<Db>, id: Path<Id>, name: web::Query<String>) -> impl Responder {
     match Group::update_name(&db.pool, id.into_inner(), name.into_inner()).await {
         Ok(Some(group)) => respond::found(group),
         Ok(None) => respond::not_found("No group with id"),
         Err(e) => respond::err(e),
     }
 }
-pub async fn update_description(db: Data<Db>, id: Path<Uuid>, description: web::Query<String>) -> impl Responder {
+pub async fn update_description(db: Data<Db>, id: Path<Id>, description: web::Query<String>) -> impl Responder {
     match Group::update_description(&db.pool, id.into_inner(), description.into_inner()).await {
         Ok(Some(group)) => respond::found(group),
         Ok(None) => respond::not_found("No group with id"),
@@ -87,7 +87,7 @@ pub async fn update_by_id() -> impl Responder {
     "Group ID".to_string()
 }
 
-pub async fn get_group_users(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_group_users(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Group::get_all_users(&db.pool, id.into_inner()).await {
         Ok(gu) => respond::ok(gu),
         Err(e) => respond::err(e),
@@ -99,7 +99,7 @@ pub async fn add_group_user(db: Data<Db>, gu: Json<GroupUser>) -> impl Responder
         Err(e) => respond::err(e),
     }
 }
-pub async fn add_group_member(db: Data<Db>, path: Path<(Uuid, Uuid)>) -> impl Responder {
+pub async fn add_group_member(db: Data<Db>, path: Path<(Id, Id)>) -> impl Responder {
     let (group_id, user_id) = path.into_inner();
     match Group::add_member(&db.pool, group_id, user_id).await {
         Ok(gu) => respond::ok(gu),

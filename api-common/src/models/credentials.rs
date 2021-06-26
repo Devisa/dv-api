@@ -2,15 +2,14 @@ use super::User;
 use pwhash::bcrypt::{BcryptSetup, BcryptVariant, self};
 use serde::{Serialize, Deserialize};
 use sqlx::{FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}, postgres::PgPool};
-use uuid::Uuid;
-use crate::types::id::Id;
+use api_db::types::id::Id;
 
-#[derive(PartialOrd,  Eq, Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(PartialOrd,  Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Credentials {
     #[serde(default = "Id::gen")]
     pub id: Id,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub username: String,
     pub password: String,
 }
@@ -73,11 +72,11 @@ impl CredentialsIn {
 impl Credentials {
 
     /// To create _new_ credentials -- used for signup
-    pub fn create(user_id: Uuid, username: String, password: String) -> Self {
+    pub fn create(user_id: Id, username: String, password: String) -> Self {
         log::info!("CREATING NEW CREDENTIALS -- SIGNING UP NEW USER {}", &username);
         println!("CREATING NEW CREDENTIALS -- SIGNING UP NEW USER {}", &username);
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: Id::gen(),
             user_id,
             username,
             password: Self::hash_password(&password),
@@ -85,7 +84,7 @@ impl Credentials {
     }
 
     /// To fetch existing credentials
-    pub async fn fetch_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn fetch_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Credentials>("
             SELECT * FROM credentials WHERE user_id = $1")
             .bind(user_id)
@@ -113,7 +112,7 @@ impl Credentials {
             .expect("Could not hash password")
     }
 
-    /* pub async fn delete_by_id(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Self>> {
+    /* pub async fn delete_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
         let acct = sqlx::query_as::<Postgres, Self>("DELETE FROM credentials WHERE id = $1 RETURNING *")
             .bind(id)
             .fetch_optional(db).await?;
@@ -125,21 +124,21 @@ impl Credentials {
             .fetch_all(db).await?;
         Ok(creds)
     }
-    pub async fn get_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn get_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let creds = sqlx::query_as::<Postgres, Self>("SELECT * FROM credentials WHERE user_id = $1")
             .bind(user_id)
             .fetch_optional(db).await?;
         Ok(creds)
     }
  */
-    pub async fn delete_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<Uuid>> {
+    pub async fn delete_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Id>> {
         let creds = sqlx::query_scalar("DELETE FROM credentials WHERE user_id = $1 returning id")
             .bind(user_id)
             .fetch_optional(db).await?;
         Ok(creds)
     }
 
-    pub async fn get_user(db: &PgPool, creds_id: Uuid) -> anyhow::Result<User> {
+    pub async fn get_user(db: &PgPool, creds_id: Id) -> anyhow::Result<User> {
         let user = sqlx::query_as::<Postgres, User>("SELECT * FROM users WHERE id = $1")
             .bind(creds_id)
             .fetch_one(db).await?;

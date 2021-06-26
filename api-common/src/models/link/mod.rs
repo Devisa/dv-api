@@ -1,5 +1,4 @@
-use uuid::Uuid;
-use api_db::types::Model;
+use api_db::types::{Id, Model};
 use serde::{Serialize, Deserialize};
 use sqlx::{
     FromRow, Postgres, postgres::{PgRow, PgPool},
@@ -13,14 +12,14 @@ pub trait Linked: Model + Default + Clone {
     type Left: Model + LinkedTo<Self::Right>;
     type Right: Model + LinkedTo<Self::Left>;
 
-    fn link_id(self) -> Option<Uuid>;
-    fn left_id(self) -> Uuid;
-    fn right_id(self) -> Uuid;
+    fn link_id(self) -> Option<Id>;
+    fn left_id(self) -> Id;
+    fn right_id(self) -> Id;
 
     /// Default new function for join table consisting only of L, R ids + opt link_id
     /// Reimplement, or overwrite this function in the case of join table with other
     /// required fields
-    fn new_basic(left_id: Uuid, right_id: Uuid, link_id: Option<Uuid>) -> Self;
+    fn new_basic(left_id: Id, right_id: Id, link_id: Option<Id>) -> Self;
 
     /// Default insert function for a join table consisting only of L, R ids + optional link_id
     ///     (and created, updated). Re-implement for join tables with extra required fields
@@ -46,7 +45,7 @@ pub trait Linked: Model + Default + Clone {
 
     }
 
-    async fn linked_to_left(db: &PgPool, left_id: Uuid) -> sqlx::Result<Vec<Self::Right>> {
+    async fn linked_to_left(db: &PgPool, left_id: Id) -> sqlx::Result<Vec<Self::Right>> {
         let query_str = format!("
             SELECT * FROM {right}
             INNER JOIN {link} ON {right}.id = {link}.{right_id_str}
@@ -63,7 +62,7 @@ pub trait Linked: Model + Default + Clone {
             .fetch_all(db).await?;
         Ok(res)
     }
-    async fn linked_to_right(db: &PgPool, right_id: Uuid) -> sqlx::Result<Vec<Self::Left>> {
+    async fn linked_to_right(db: &PgPool, right_id: Id) -> sqlx::Result<Vec<Self::Left>> {
         let res = sqlx::query_as::<Postgres, Self::Left>(&format!("
             SELECT * FROM {left}
             INNER JOIN {link} ON {left}.id = {link}.{left_id_str}
@@ -81,7 +80,7 @@ pub trait Linked: Model + Default + Clone {
         Ok(res)
     }
 
-    async fn linked_between(db: &PgPool, left_id: Uuid, right_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    async fn linked_between(db: &PgPool, left_id: Id, right_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(&format!("
                 SELECT * FROM {link}
                 WHERE {left_id} = $1
@@ -108,7 +107,7 @@ where
 
     type LinkModel: Model + for<'r> FromRow<'r, PgRow> + Linked;
 
-    async fn get_entries_linked_to(db: &PgPool, other_id: Uuid) -> sqlx::Result<Vec<L>> {
+    async fn get_entries_linked_to(db: &PgPool, other_id: Id) -> sqlx::Result<Vec<L>> {
         let res = sqlx::query_as::<Postgres, L>(&format!("
             SELECT * FROM {this}
             INNER JOIN {link} ON {this}.id = {link}.{this_id_str}
@@ -125,7 +124,7 @@ where
             .fetch_all(db).await?;
         Ok(res)
     }
-    async fn get_links_to_entry(db: &PgPool, this_id: Uuid) -> sqlx::Result<Vec<L>> {
+    async fn get_links_to_entry(db: &PgPool, this_id: Id) -> sqlx::Result<Vec<L>> {
         let res = sqlx::query_as::<Postgres, L>(&format!("
             SELECT * FROM {other}
             INNER JOIN {link} ON {other}.id = {link}.{other_id_str}
@@ -142,7 +141,7 @@ where
             .fetch_all(db).await?;
         Ok(res)
     }
-    async fn get_links_between(db: &PgPool, this_id: Uuid, other_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    async fn get_links_between(db: &PgPool, this_id: Id, other_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(&format!("
                 SELECT * FROM {link}
                 WHERE {this_id_str} = $1
@@ -156,7 +155,7 @@ where
             .fetch_all(db).await?;
         Ok(res)
     }
-    /* async fn add_link(db: &PgPool, id: Uuid, other: L, link: Option<Link>) -> sqlx::Result<(Self::LinkModel, L)> {
+    /* async fn add_link(db: &PgPool, id: Id, other: L, link: Option<Link>) -> sqlx::Result<(Self::LinkModel, L)> {
         if let Some(link) = link {
 
         }
@@ -174,8 +173,8 @@ where
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Link {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
@@ -208,7 +207,7 @@ impl Model for Link {
 impl Link {
 
     pub fn new(name: String, value: Option<String>) -> Self {
-        Self { id: Uuid::new_v4(), name, value, created_at: now(), updated_at: now() }
+        Self { id: Id::gen(), name, value, created_at: now(), updated_at: now() }
     }
 
     pub async fn get_or_create_key_val(db: &PgPool, name: String, value: Option<String>) -> anyhow::Result<Self> {

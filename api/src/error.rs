@@ -2,10 +2,9 @@ use std::error;
 use std::fmt;
 
 use derive_more::{Error, From, Into, Display};
-use actix_web as aweb;
 use actix_web::{
     error::{ResponseError, JsonPayloadError, QueryPayloadError},
-    HttpResponse,
+    HttpResponse, HttpRequest,
 };
 use actix_web::http::StatusCode;
 use serde::ser::{Serialize, Serializer, SerializeStruct};
@@ -239,3 +238,15 @@ impl From<serde_json::error::Error> for Error {
 }
 
 
+pub async fn error_resp(req: HttpRequest) -> actix_web::Result<HttpResponse> {
+    return Ok(HttpResponse::BadRequest()
+            .insert_header(("Content-Type", "application/json"))
+            .body(format!(
+                    "Internal error: Inserted creds, but one failure:\n
+                     User insert: {}\n
+                     Acct insert: {}\n
+                     Profile insert: {}\n",
+                     true, true, true,
+             )))
+
+}

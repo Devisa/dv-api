@@ -1,22 +1,25 @@
-use anyhow::{Context, Error};
+use api_db::{Db, Id, Model};
 use api_common::types::now;
 use actix_http::{StatusCode, header};
 use actix_web::{FromRequest, HttpRequest, HttpResponse, ResponseError, dev::Payload, error::PayloadError, web};
 use api_common::models::Session;
+use api_common::types::Expiration;
 use chrono::NaiveDateTime;
 use futures_util::future::{ok, err, Ready};
 use derive_more::{From, Display, Error};
-use uuid::Uuid;
 use crate::error::SessionError;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, From,  Clone,  Serialize, Deserialize)]
 pub struct SessionIn {
-    pub id: Uuid,
-    pub user_id: Uuid ,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id ,
     pub access_token: String,
     pub session_token: String,
-    pub expires: NaiveDateTime,
+    #[serde(default = "Expiration::two_days")]
+    pub expires: Expiration,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
     #[serde(default = "now")]
@@ -26,11 +29,11 @@ pub struct SessionIn {
 impl Default for SessionIn {
     fn default() -> Self {
         SessionIn {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             access_token: String::new(),
             session_token: String::new(),
-            expires: now(),
+            expires: Expiration::two_days(),
             created_at: now(),
             updated_at: now(),
         }
@@ -41,12 +44,12 @@ impl Into<Session> for SessionIn {
     fn into(self) -> Session {
         Session {
             access_token: self.access_token.to_string(),
-            user_id: self.user_id,
+            user_id: self.clone().user_id,
             session_token: self.session_token.to_string(),
-            expires: self.expires,
+            expires: self.clone().expires,
             created_at: self.created_at,
             updated_at: self.updated_at,
-            id: self.id
+            id: self.clone().id
         }
     }
 }

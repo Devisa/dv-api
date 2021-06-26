@@ -1,47 +1,15 @@
-pub mod id;
+pub mod time;
+pub mod auth;
 pub mod token;
 
+pub use time::Expiration;
+pub use api_db::types::id::Id;
+pub use token::{AccessToken, SessionToken, RefreshToken};
 use uuid::Uuid;
 use chrono::{Duration, NaiveDateTime, Utc};
 use crate::models::{record::Record, user::{UserIn, User}};
 use serde::{Deserialize, Serialize};
 use std::string::ToString;
-
-#[derive(sqlx::Type, Serialize, Deserialize, PartialEq, PartialOrd, Clone, Debug)]
-#[sqlx(type_name = "link_id")]
-pub struct LinkId(Option<Uuid>);
-
-#[derive(sqlx::Type, Serialize, Deserialize, PartialEq, PartialOrd, Clone, Debug)]
-#[sqlx(type_name = "user_id")]
-pub struct UserId(uuid::Uuid);
-
-impl Default for UserId {
-
-    fn default() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
-impl From<User> for UserId {
-    fn from(us: User) -> Self {
-        Self(us.id)
-    }
-}
-impl From<Record> for UserId {
-    fn from(rec: Record) -> Self {
-        Self(rec.user_id)
-    }
-}
-
-impl UserId {
-
-    pub fn gen() -> Self {
-        Self::default()
-    }
-
-    pub fn new(uuid: Uuid) -> Self {
-        Self(uuid)
-    }
-}
 
 #[derive(sqlx::Type, Serialize, Deserialize, PartialEq, PartialOrd, Clone, Debug)]
 #[sqlx(type_name = "jwt")]
@@ -51,15 +19,6 @@ impl Default for JWT {
     fn default() -> Self {
         Self(String::new())
     }
-}
-
-#[derive(sqlx::Type, Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[sqlx(type_name = "expiration", rename_all = "lowercase")]
-pub enum Expiration {
-    OneDay,
-    TwoDays,
-    OneWeek,
-    TwoWeeks,
 }
 
 #[derive(sqlx::Type, Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -99,12 +58,6 @@ pub enum Gender {
     Female,
     Other,
     PreferNotToSay,
-}
-
-impl Default for Expiration {
-    fn default() -> Self {
-        Expiration::OneWeek
-    }
 }
 
 impl Default for Gender {
@@ -159,12 +112,3 @@ impl ToString for Status {
     }
 }
 
-impl Expiration {
-
-    pub fn two_days() -> NaiveDateTime {
-        let today = Utc::now().naive_utc();
-        let two_days = today.checked_add_signed(Duration::days(2))
-            .expect("Invalid datetime?");
-        return two_days;
-    }
-}

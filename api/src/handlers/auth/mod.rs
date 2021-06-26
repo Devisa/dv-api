@@ -1,14 +1,20 @@
 pub mod credentials;
 
+use std::convert::TryFrom;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
-use crate::{auth::jwt, context::ApiSession, db::Db, util::respond};
+use api_db::{Db, Model, Id};
+use crate::{util::respond, context::ApiSession,};
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post,
     web::{self, ServiceConfig, Json, Data, Form, Path},
     cookie::{self, Cookie},
 };
-use api_common::models::{Model, Profile, account::AccountProvider, auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}};
+use api_common::{
+    models::{
+        Profile, account::AccountProvider, auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}
+    },
+    auth::jwt,
+};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -72,7 +78,7 @@ pub async fn get_jwt_user(db: Data<Db>, req: HttpRequest, ) -> actix_web::Result
     if let Some(token) = req.cookie("dvsa-auth") {
         match jwt::decode_token(token.value()) {
             Ok(claims) => {
-                match User::get(&db.pool, claims.sub.parse::<Uuid>().unwrap()).await {
+                match User::get(&db.pool, Id::try_from(claims.sub).unwrap()).await {
                     Ok(Some(user)) => Ok(respond::ok(user)),
                     Ok(None) => Ok(respond::not_found("No user with that sub")),
                     Err(e) => Ok(respond::err(e)),
@@ -115,8 +121,8 @@ pub async fn login(db: Data<Db>, creds: Json<CredentialsIn>) -> impl Responder {
     match Credentials::verify(&db.pool, &creds.username, &creds.password).await {
         Ok(creds) => {
             // Create session Session::Create(user_id, ...)
-            let user = Credentials::get_user(&db.pool, creds.user_id).await.unwrap();
-            let jwt = jwt::encode_token(creds.user_id, Uuid::nil(), "dvweb".into(), "user".to_string(), 72).unwrap();
+            let user = Credentials::get_user(&db.pool, creds.clone().user_id).await.unwrap();
+            let jwt = jwt::encode_token(creds.user_id, Id::nil(), "dvweb".into(), "user".to_string(), 72).unwrap();
             let exp = OffsetDateTime::now_utc() + Duration::days(3);
             HttpResponse::Ok()
                 .append_header(("dvsa-auth", jwt.clone()))

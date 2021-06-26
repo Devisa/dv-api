@@ -1,5 +1,4 @@
-use api_db::Db;
-use uuid::Uuid;
+use api_db::{Db, Model, Id};
 use crate::{
     util::respond,
     handlers::record::{
@@ -10,7 +9,6 @@ use crate::{
     },
 };
 use api_common::models::{
-    Model,
     link::{Link, LinkedTo, Linked},
     item::{Item, ItemField},
     field::Field,
@@ -102,7 +100,7 @@ pub async fn create_item(db: Data<Db>, item: Json<Item>) -> impl Responder {
 }
 
 // #[get("/{item_id}")]
-pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Item::get(&db.pool, id.clone()).await {
         Ok(Some(item)) => respond::found(item),
         Ok(None) => respond::not_found("NOT FOUND"),
@@ -111,7 +109,7 @@ pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
 }
 
 // #[post("/{item_id}")]
-pub async fn update_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn update_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Item::get(&db.pool, id.clone()).await {
         Ok(Some(item)) => respond::found(item),
         Ok(None) => respond::not_found("COULD NOT FIND"),
@@ -120,7 +118,7 @@ pub async fn update_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
 }
 
 // #[delete("/{item_id}")]
-pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Item::delete(&db.pool, id.clone()).await {
         Ok(Some(item)) => respond::ok(item),
         Ok(None) => respond::not_found("NOT OFUND"),
@@ -129,7 +127,7 @@ pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
 }
 
 // #[post("/item")]
-pub async fn add_new_field(db: Data<Db>, item_id: Path<Uuid>, field: Json<Field>) -> impl Responder {
+pub async fn add_new_field(db: Data<Db>, item_id: Path<Id>, field: Json<Field>) -> impl Responder {
     match Item::get(&db.pool, item_id.clone()).await {
         Ok(Some(_item)) => {
             match field.into_inner().insert(&db.pool).await {
@@ -149,7 +147,7 @@ pub async fn add_new_field(db: Data<Db>, item_id: Path<Uuid>, field: Json<Field>
 }
 
 // #[post("/item/{item_id}")]
-pub async fn add_existing_field(db: Data<Db>, path: Path<(Uuid, Uuid)>, item_id: Json<Item>) -> impl Responder {
+pub async fn add_existing_field(db: Data<Db>, path: Path<(Id, Id)>, item_id: Json<Item>) -> impl Responder {
     let (item_id, field) = path.into_inner();
     match (Item::get(&db.pool, item_id.clone()).await, Item::get(&db.pool, item_id.clone()).await) {
         (Ok(Some(item)), Ok(Some(field))) => {
@@ -166,7 +164,7 @@ pub async fn add_existing_field(db: Data<Db>, path: Path<(Uuid, Uuid)>, item_id:
 }
 
 // #[get("/field")]
-pub async fn get_item_fields(db: Data<Db>, item_id: Path<Uuid>) -> impl Responder {
+pub async fn get_item_fields(db: Data<Db>, item_id: Path<Id>) -> impl Responder {
     match Item::get(&db.pool, item_id.clone()).await {
         Ok(Some(item)) => {
             match <Item as LinkedTo<Field>>::get_links_to_entry(&db.pool, item_id.clone()).await {
@@ -181,7 +179,7 @@ pub async fn get_item_fields(db: Data<Db>, item_id: Path<Uuid>) -> impl Responde
 
 
 // #[get("/field/{field_id}")]
-pub async fn get_links_between_item_and_field(db: Data<Db>, path: Path<(Uuid, Uuid)>) -> impl Responder {
+pub async fn get_links_between_item_and_field(db: Data<Db>, path: Path<(Id, Id)>) -> impl Responder {
     let (item_id, field_id) = path.into_inner();
     match (Item::get(&db.pool, item_id.clone()).await, Field::get(&db.pool, field_id.clone()).await) {
         (Ok(Some(item)), Ok(Some(field))) => {

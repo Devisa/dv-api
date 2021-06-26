@@ -10,7 +10,7 @@ use rand::{distributions::{Uniform, Alphanumeric}, Rng, prelude::Distribution};
 use fake::{Dummy, Fake, Faker, faker};
 use api_db::types::Model;
 use crate::{
-    types::{Status, now, private},
+    types::{Id, Status, now, private},
     models::{Profile, Item, Record, Account, VerificationRequest, Session, Credentials, Field, Group,
         user::badge::UserBadge,
         messages::{
@@ -30,12 +30,12 @@ use self::level::UserLevel;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UserId {
-    pub user_id: Uuid,
+    pub user_id: Id,
 }
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq, )]
 pub struct User {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -68,7 +68,7 @@ pub struct UserIn {
 impl Default for User {
     fn default() -> Self {
         User {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             name: None,
             email: None,
             email_verified: None,
@@ -82,7 +82,7 @@ impl Default for User {
 impl From<UserIn> for User {
     fn from(user: UserIn) -> Self {
         User {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             name: Some(user.name),
             image: user.image,
             email: Some(user.email),
@@ -150,7 +150,7 @@ impl User {
             .take(8).map(char::from).collect::<String>());
         email.push_str(".com");
         User {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             email: Some(email),
             email_verified: None,
             image: None,
@@ -167,14 +167,14 @@ impl User {
     // }
 
 
-    // pub async fn get(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Self>> {
+    // pub async fn get(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
     //     let res = sqlx::query_as::<Postgres, User>("SELECT * FROM users WHERE id = $1")
     //         .bind(id)
     //         .fetch_optional(db).await?;
     //     Ok(res)
     // }
 
-    // pub async fn delete_by_id(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Self>> {
+    // pub async fn delete_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
     //     let res = sqlx::query_as::<Postgres, User>("DELETE FROM users WHERE id = $1 RETURNING *")
     //         .bind(id)
     //         .fetch_optional(db).await?;
@@ -193,7 +193,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_credentials(db: &PgPool, id: Uuid) -> anyhow::Result<Credentials> {
+    pub async fn get_credentials(db: &PgPool, id: Id) -> anyhow::Result<Credentials> {
         let res = sqlx::query_as::<Postgres, Credentials>(
             "SELECT * FROM credentials WHERE user_id = $1")
             .bind(id)
@@ -201,7 +201,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_profile(db: &PgPool, id: Uuid) -> anyhow::Result<Profile> {
+    pub async fn get_profile(db: &PgPool, id: Id) -> anyhow::Result<Profile> {
         let res = sqlx::query_as::<Postgres, Profile>("
             SELECT * FROM profiles WHERE user_id = $1")
             .bind(id)
@@ -209,7 +209,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_accounts(db: &PgPool, id: Uuid) -> anyhow::Result<Vec<Account>> {
+    pub async fn get_accounts(db: &PgPool, id: Id) -> anyhow::Result<Vec<Account>> {
         let res = sqlx::query_as::<Postgres, Account>("
             SELECT * FROM accounts WHERE user_id = $1")
             .bind(id)
@@ -217,7 +217,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_sessions(db: &PgPool, id: Uuid) -> anyhow::Result<Vec<Session>> {
+    pub async fn get_sessions(db: &PgPool, id: Id) -> anyhow::Result<Vec<Session>> {
         let res = sqlx::query_as::<Postgres, Session>("
             SELECT * FROM sessions WHERE user_id = $1")
             .bind(id)
@@ -225,7 +225,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_verification_requests(db: &PgPool, id: Uuid) -> anyhow::Result<Vec<VerificationRequest>> {
+    pub async fn get_verification_requests(db: &PgPool, id: Id) -> anyhow::Result<Vec<VerificationRequest>> {
         let res = sqlx::query_as::<Postgres, VerificationRequest>("
             SELECT * FROM verification_requests WHERE user_id = $1")
             .bind(id)
@@ -233,7 +233,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_records_created(db: &PgPool, id: Uuid) -> anyhow::Result<Vec<Record>> {
+    pub async fn get_records_created(db: &PgPool, id: Id) -> anyhow::Result<Vec<Record>> {
         let res = sqlx::query_as::<Postgres, Record>("
             SELECT * FROM records WHERE user_id = $1")
             .bind(id)
@@ -241,7 +241,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_items_created(db: &PgPool, id: Uuid) -> anyhow::Result<Vec<Item>> {
+    pub async fn get_items_created(db: &PgPool, id: Id) -> anyhow::Result<Vec<Item>> {
         let res = sqlx::query_as::<Postgres, Item>("
             SELECT * FROM items WHERE user_id = $1")
             .bind(id)
@@ -249,7 +249,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_fields_created(db: &PgPool, id: Uuid) -> anyhow::Result<Vec<Field>> {
+    pub async fn get_fields_created(db: &PgPool, id: Id) -> anyhow::Result<Vec<Field>> {
         let res = sqlx::query_as::<Postgres, Field>("
             SELECT * FROM fields WHERE user_id = $1")
             .bind(id)
@@ -257,7 +257,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn get_groups_created(db: &PgPool, id: Uuid) -> anyhow::Result<Vec<Group>> {
+    pub async fn get_groups_created(db: &PgPool, id: Id) -> anyhow::Result<Vec<Group>> {
         let res = sqlx::query_as::<Postgres, Group>("
             SELECT * FROM group WHERE user_id = $1")
             .bind(id)
@@ -265,7 +265,7 @@ impl User {
         Ok(res)
     }
 
-    pub async fn delete(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Self>> {
+    pub async fn delete(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(
             "DELETE FROM users WHERE id = $1 RETURNING *")
             .bind(id)
@@ -289,12 +289,12 @@ impl User {
         item.insert(db).await
     }
 
-    pub async fn get_level(db: &PgPool, user_id: Uuid) -> anyhow::Result<Option<UserLevel>> {
+    pub async fn get_level(db: &PgPool, user_id: Id) -> anyhow::Result<Option<UserLevel>> {
         let level = UserLevel::get_by_user_id(&db, user_id).await?;
         Ok(level)
     }
 
-    pub async fn get_badges(db: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<UserBadge>> {
+    pub async fn get_badges(db: &PgPool, user_id: Id) -> anyhow::Result<Vec<UserBadge>> {
         let level = UserLevel::get_by_user_id(&db, user_id).await?;
         if let Some(level) = level {
             let badges = UserLevel::get_badges(&db, level.id).await?;
@@ -304,7 +304,7 @@ impl User {
         }
     }
 
-    // pub async fn get_dms_as_recipient(self, db: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<DirectUserMessage>> {
+    // pub async fn get_dms_as_recipient(self, db: &PgPool, user_id: Id) -> anyhow::Result<Vec<DirectUserMessage>> {
     //     let level = UserLevel::get_by_user_id(&db, user_id).await?;
     //     if let Some(level) = level {
     //         let badges = UserLevel::get_badges(&db, level.id.unwrap()).await?;

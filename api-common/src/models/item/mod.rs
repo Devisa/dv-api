@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use actix::prelude::*;
 use crate::{
-    types::{Status, now, private},
+    types::{Id, Status, now, private},
     models::{link::{Link, Linked, LinkedTo}, Model, field::{Field, FieldKind}
 }};
 use serde::{Serialize, Deserialize};
@@ -13,10 +13,10 @@ use sqlx::{
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Item {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -104,14 +104,14 @@ pub struct ItemData {
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ItemRelation {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub item1_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub item2_id: Uuid,
+    pub link_id: Option<Id>,
+    #[serde(default = "Id::nil")]
+    pub item1_id: Id,
+    #[serde(default = "Id::nil")]
+    pub item2_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -127,14 +127,14 @@ pub struct ItemRelation {
 #[derive(PartialEq, Debug, FromRow, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ItemField {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub item_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub field_id: Uuid,
+    pub link_id: Option<Id>,
+    #[serde(default = "Id::nil")]
+    pub item_id: Id,
+    #[serde(default = "Id::nil")]
+    pub field_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -161,9 +161,9 @@ impl Actor for Item {
 impl Default for ItemField {
     fn default() -> Self {
         Self {
-            id: Uuid::new_v4(),
-            field_id: Uuid::nil(),
-            item_id: Uuid::nil(),
+            id: Id::gen(),
+            field_id: Id::nil(),
+            item_id: Id::nil(),
             link_id: None,
             name: None,
             description: None,
@@ -188,16 +188,16 @@ impl Linked for ItemField {
     type Left = Item;
     type Right = Field;
 
-    fn new_basic(left_id: Uuid, right_id: Uuid, link_id: Option<Uuid>) -> Self {
+    fn new_basic(left_id: Id, right_id: Id, link_id: Option<Id>) -> Self {
         Self {
             item_id: left_id, field_id: right_id, link_id,
             ..Default::default()
         }
     }
 
-    fn link_id(self) -> Option<Uuid> { self.link_id }
-    fn left_id(self) -> Uuid { self.item_id }
-    fn right_id(self) -> Uuid { self.field_id }
+    fn link_id(self) -> Option<Id> { self.link_id }
+    fn left_id(self) -> Id { self.item_id }
+    fn right_id(self) -> Id { self.field_id }
 }
 
 
@@ -228,8 +228,8 @@ pub struct ItemRelationData {
 impl Default for Item {
     fn default() -> Self {
         Item {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             name: String::new(),
             private: true,
             status: Status::Active,
@@ -243,7 +243,7 @@ impl Default for Item {
 }
 
 impl ItemField {
-    pub fn new(item_id: Uuid, field_id: Uuid, link_id: Option<Uuid>, name: Option<String>, description: Option<String>) -> Self {
+    pub fn new(item_id: Id, field_id: Id, link_id: Option<Id>, name: Option<String>, description: Option<String>) -> Self {
         Self {
             field_id, item_id, link_id, name, description, ..Default::default()
         }
@@ -254,13 +254,13 @@ impl ItemField {
 
 impl Item {
 
-    pub fn new(name: String, user_id: Uuid) -> Self {
+    pub fn new(name: String, user_id: Id) -> Self {
         Self {
             user_id, name, ..Default::default()
         }
     }
 
-    pub async fn update_by_id(db: &PgPool, id: Uuid, i: Item)
+    pub async fn update_by_id(db: &PgPool, id: Id, i: Item)
         -> anyhow::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
             UPDATE     items
@@ -286,24 +286,24 @@ impl Item {
         Ok(res)
     }
 
-    pub async fn get_by_user(db: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Self>> {
+    pub async fn get_by_user(db: &PgPool, user_id: Id) -> anyhow::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Item>("SELECT * FROM items WHERE user_id = $1")
             .bind(user_id)
             .fetch_all(db).await?;
         Ok(res)
     }
 
-    pub async fn add_new_field(self, db: &PgPool, name: String, kind: FieldKind) -> anyhow::Result<Self> {
+    pub async fn add_new_field(self, db: &PgPool, name: String, kind: FieldKind) -> anyhow::Result<ItemField> {
         let field = Field::new(name, kind, self.user_id).insert(&db).await?;
         let item_field = ItemField::new_basic(self.id, field.id, None).insert(&db).await?;
-        Ok(self)
+        Ok(item_field)
     }
 
-    pub async fn add_existing_item(self, db: &PgPool, field_id: Uuid) -> anyhow::Result<Self> {
+    pub async fn add_existing_item(self, db: &PgPool, field_id: Id) -> anyhow::Result<ItemField> {
         let field = Field::get(&db, field_id).await?;
         if let Some(field) = field {
             let item_field = ItemField::new_basic(self.id, field.id, None).insert(&db).await?;
-            Ok(self)
+            Ok(item_field)
         } else {
             return Err(anyhow::anyhow!("Item does not exist"));
         }

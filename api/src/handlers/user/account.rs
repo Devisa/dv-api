@@ -1,14 +1,13 @@
 use crate::util::respond;
-use uuid:: Uuid;
-use api_db::db::Db;
-use api_common::models::{account::Account, Model};
+use api_db::{Db, Id, Model};
+use api_common::models::account::Account;
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, http::StatusCode, post,
     web::{self, Path, Data, Json, ServiceConfig}
 };
 
 pub struct Accounts {
-    pub id: Uuid,
+    pub id: Id,
 }
 
 pub fn routes(cfg: &mut ServiceConfig) {
@@ -27,14 +26,14 @@ pub async fn get_all(db: Data<Db>) -> impl Responder {
     }
 }
 
-pub async fn get_by_user_id(db: Data<Db>, user_id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_user_id(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     match Account::get_all_by_user_id(&db.pool, user_id.into_inner()).await {
         Ok(acct) => respond::ok(acct),
         Err(e) => respond::err(e),
     }
 }
 
-pub async fn delete_by_user_id(db: Data<Db>, user_id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_user_id(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     match Account::delete_by_user_id(&db.pool, user_id.into_inner()).await {
         Ok(acct) => respond::ok(acct),
         Err(e) => respond::err(e),

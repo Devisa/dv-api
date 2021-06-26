@@ -1,3 +1,6 @@
+pub mod id;
+
+pub use id::Id;
 use uuid::Uuid;
 use sqlx::{
     prelude::*, FromRow, Postgres, PgPool, postgres::PgRow,
@@ -25,7 +28,7 @@ where
     /// Insert the model into the database
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self>;
 
-    async fn get(db: &PgPool, id: Uuid) -> sqlx::Result<Option<Self>> {
+    async fn get(db: &PgPool, id: Id) -> sqlx::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(&format!("SELECT * FROM {} WHERE id = $1", Self::table()))
             .bind(id)
             .fetch_optional(db).await?;
@@ -38,7 +41,7 @@ where
         Ok(res)
     }
 
-    async fn delete(db: &PgPool, id: Uuid) -> sqlx::Result<Option<Self>> {
+    async fn delete(db: &PgPool, id: Id) -> sqlx::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(&format!("DELETE FROM {} WHERE id = $1 RETURNING *", Self::table()))
             .bind(id)
             .fetch_optional(db).await?;
@@ -51,14 +54,14 @@ where
         Ok(res)
     }
 
-    async fn get_by_id(self, db: &PgPool, kind: &str, id: Uuid) -> sqlx::Result<Vec<Self>> {
+    async fn get_by_id(self, db: &PgPool, kind: &str, id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(&format!("SELECT * FROM {} WHERE {}_id = $1", Self::table(), kind))
             .bind(id)
             .fetch_all(db).await?;
         Ok(res)
     }
 
-    async fn delete_by_id(self, db: &PgPool, kind: &str, id: Uuid) -> sqlx::Result<Vec<Self>> {
+    async fn delete_by_id(self, db: &PgPool, kind: &str, id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(&format!("DELETE FROM {} WHERE {}_id = $1", Self::table(), kind))
             .bind(id)
             .fetch_all(db).await?;
@@ -70,3 +73,6 @@ where
 pub async fn get<'r, F: 'r + FromRow<'r, PgRow>>() {
 
 }
+/*
+impl<'r> sqlx::FromRow<'r, PgRow> for dyn Model {
+} */

@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_db::{Model, Id};
 use crate::{
     db::Db,
     util::respond,
@@ -9,10 +9,7 @@ use crate::{
         get_links_between_item_and_field,
     },
 };
-use api_common::models::{
-    Model,
-    field::Field,
-};
+use api_common::models::field::Field;
 use sqlx::{prelude::*, postgres::Postgres};
 use actix_web::{
     web::{HttpRequest,  Data, Json, Path, ServiceConfig, self}, Responder
@@ -94,7 +91,7 @@ pub async fn new_field(db: Data<Db>, field: Json<Field>) -> impl Responder {
 }
 
 
-pub async fn get_by_id(db: Data<Db>, field_id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, field_id: Path<Id>) -> impl Responder {
     match Field::get(&db.pool, field_id.into_inner()).await {
         Ok(Some(field)) => respond::found(field),
         Ok(None) => respond::not_found("COULD NOT FIND FIELD"),
@@ -105,7 +102,7 @@ pub async fn get_by_id(db: Data<Db>, field_id: Path<Uuid>) -> impl Responder {
 pub async fn update_by_id(db: Data<Db>) -> impl Responder {
     "link ID".to_string()
 }
-pub async fn delete_by_id(db: Data<Db>, field_id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_id(db: Data<Db>, field_id: Path<Id>) -> impl Responder {
     match Field::delete(&db.pool, field_id.into_inner()).await {
         Ok(Some(field)) => respond::found(field),
         Ok(None) => respond::not_found("COULD NOT FIND FIELD"),

@@ -3,7 +3,7 @@ pub mod target;
 
 use uuid::Uuid;
 use actix::prelude::*;
-use crate::types::{Status, now, private};
+use crate::types::{Id, Status, now, private};
 use serde::{Serialize, Deserialize};
 use crate::models::Model;
 use sqlx::{
@@ -13,10 +13,10 @@ use sqlx::{
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Field {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -58,14 +58,14 @@ impl Model for Field {
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FieldRelation {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub record1_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub record2_id: Uuid,
+    pub link_id: Option<Id>,
+    #[serde(default = "Id::nil")]
+    pub record1_id: Id,
+    #[serde(default = "Id::nil")]
+    pub record2_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -81,8 +81,8 @@ pub struct FieldRelation {
 impl Default for Field {
     fn default() -> Self {
         Field {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             name: String::new(),
             private: true,
             kind: FieldKind::default(),
@@ -128,7 +128,7 @@ impl Default for FieldKind {
 
 impl Field {
 
-    pub fn new(name: String, kind: FieldKind, user_id: Uuid) -> Self {
+    pub fn new(name: String, kind: FieldKind, user_id: Id) -> Self {
         Self { name, kind, user_id, ..Default::default() }
     }
 

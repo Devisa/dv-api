@@ -2,7 +2,7 @@ use crate::{models::{
     Model,
         record::Record,
         item::Item,
-    }, types::{Gender, Status, now, private}};
+    }, types::{Gender, Id, Status, now, private}};
 use actix_web::{HttpRequest, HttpResponse, Responder};
 use chrono::NaiveDate;
 use serde::{Serialize, Deserialize};

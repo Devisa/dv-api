@@ -1,7 +1,7 @@
 use crate::models::user::User;
 use uuid::Uuid;
 use super::Model;
-use crate::types::{GroupRole, Status, now, private};
+use crate::types::{GroupRole, Id, Status, now, private};
 use actix::prelude::*;
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -11,10 +11,10 @@ use sqlx::{
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Group {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -34,14 +34,14 @@ pub struct Group {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GroupUser {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub group_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
+    #[serde(default = "Id::nil")]
+    pub group_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
+    pub link_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -120,9 +120,9 @@ impl api_db::types::Model for GroupUser {
 impl Default for GroupUser {
     fn default() -> Self {
         GroupUser {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
-            group_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
+            group_id: Id::nil(),
             ..Default::default()
         }
     }
@@ -131,8 +131,8 @@ impl Default for GroupUser {
 impl Default for Group {
     fn default() -> Self {
         Group {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             name: String::new(),
             description: None,
             private: false,
@@ -149,13 +149,13 @@ impl GroupUser {
 }
 
 impl Group {
-    pub async fn add_member(db: &PgPool, group_id: Uuid, user_id: Uuid) -> anyhow::Result<GroupUser> {
+    pub async fn add_member(db: &PgPool, group_id: Id, user_id: Id) -> anyhow::Result<GroupUser> {
         let gu = GroupUser { user_id, group_id, ..Default::default() }
             .insert(db).await?;
         Ok(gu)
     }
 
-    pub async fn update_name(db: &PgPool, group_id: Uuid, name: String) -> sqlx::Result<Option<Self>> {
+    pub async fn update_name(db: &PgPool, group_id: Id, name: String) -> sqlx::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Group>("
             UPDATE groups
             SET name = $1
@@ -167,7 +167,7 @@ impl Group {
         Ok(res)
     }
 
-    pub async fn update_description(db: &PgPool, group_id: Uuid, description: String) -> sqlx::Result<Option<Self>> {
+    pub async fn update_description(db: &PgPool, group_id: Id, description: String) -> sqlx::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Group>("
             UPDATE groups
             SET description = $1
@@ -179,14 +179,14 @@ impl Group {
         Ok(res)
     }
 
-    pub async fn get_all_by_user(db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_all_by_user(db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Group>("SELECT * FROM Groups WHERE user_id = $1")
             .bind(user_id)
             .fetch_all(db).await?;
         Ok(res)
     }
 
-    pub async fn delete(db: &PgPool, id: Uuid) -> sqlx::Result<Option<Uuid>> {
+    pub async fn delete(db: &PgPool, id: Id) -> sqlx::Result<Option<Id>> {
         let res = sqlx::query_scalar("
             DELETE FROM groups WHERE id = $1 RETURNING id
             ")
@@ -194,7 +194,7 @@ impl Group {
             .fetch_optional(db).await?;
         Ok(res)
     }
-    pub async fn get_all_users(db: &PgPool, id: Uuid) -> sqlx::Result<Vec<User>> {
+    pub async fn get_all_users(db: &PgPool, id: Id) -> sqlx::Result<Vec<User>> {
         let res = sqlx::query_as::<Postgres, User>("
             SELECT * FROM users
             INNER JOIN group_users ON group_users.user_id = users.id
@@ -206,7 +206,7 @@ impl Group {
         Ok(res)
     }
 
-    pub async fn update_by_id(db: &PgPool, id: Uuid, g: Group)
+    pub async fn update_by_id(db: &PgPool, id: Id, g: Group)
         -> anyhow::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
             UPDATE     groups

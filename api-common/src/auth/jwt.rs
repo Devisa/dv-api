@@ -5,12 +5,13 @@ use anyhow::Result;
 use chrono::{Duration, Local};
 use std::convert::TryFrom;
 use uuid::Uuid;
+use api_db::Id;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EncodedUser {
-    pub user_id: Uuid,
+    pub user_id: Id,
     /// Session ID
-    pub sid: Uuid,
+    pub sid: Id,
     /// Site-wide role elevation
     pub role: String,
 }
@@ -38,7 +39,7 @@ pub struct Claims {
 
 impl Claims {
 
-    pub(crate) fn new(user_id: Uuid, session_id: Uuid, role: String, issuer: String, duration_hrs: u16) -> Self {
+    pub(crate) fn new(user_id: Id, session_id: Id, role: String, issuer: String, duration_hrs: u16) -> Self {
         let iat = Local::now();
         let exp = iat + Duration::hours(i64::from(duration_hrs));
 
@@ -64,8 +65,8 @@ impl TryFrom<Claims> for EncodedUser {
         let Claims { sid, sub, role, .. } = claims;
 
         Ok(EncodedUser {
-            sid: uuid::Uuid::parse_str(&sid.as_str())?,
-            user_id: sub.parse::<Uuid>()?,
+            sid: Id::try_from(sid)?,
+            user_id: Id::try_from(sub)?,
             role,
         })
     }
@@ -74,8 +75,8 @@ impl TryFrom<Claims> for EncodedUser {
 impl Token {
 
     pub fn create(
-        user_id: Uuid,
-        session_id: Uuid,
+        user_id: Id,
+        session_id: Id,
         issuer: String,
         role: String,
         duration_hrs: u16,
@@ -134,8 +135,8 @@ pub fn decode_token_alt(token: &str) -> anyhow::Result<Claims> {
     Ok(claims)
 }
 
-pub fn encode_token(user_id: Uuid,
-    session_id: Uuid,
+pub fn encode_token(user_id: Id,
+    session_id: Id,
     issuer: String,
     role: String,
     duration_hrs: u16,)  -> anyhow::Result<String>

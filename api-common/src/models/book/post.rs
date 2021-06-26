@@ -1,6 +1,5 @@
 use actix::prelude::*;
-use uuid::Uuid;
-use api_db::types::Model;
+use api_db::types::{Id, Model};
 use serde::{Serialize, Deserialize};
 use sqlx::{
     FromRow, Postgres, postgres::PgPool,
@@ -8,14 +7,14 @@ use sqlx::{
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BookPost {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if="Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub post_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub book_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub post_id: Id,
+    #[serde(default = "Id::nil")]
+    pub book_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
+    pub link_id: Option<Id>,
 }
 
 #[async_trait::async_trait]
@@ -40,9 +39,9 @@ impl Model for BookPost {
 
 impl BookPost {
 
-    pub fn new(post_id: Uuid, book_id: Uuid, link_id: Option<Uuid>) -> Self {
+    pub fn new(post_id: Id, book_id: Id, link_id: Option<Id>) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             post_id, book_id, link_id
         }
     }

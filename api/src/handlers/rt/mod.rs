@@ -11,8 +11,7 @@ use crate::util::respond;
 use futures::stream::poll_fn;
 use actix::prelude::*;
 use actix:: clock::Instant;
-use actix_web::{HttpResponse, Responder, http::StatusCode, web::{self, ServiceConfig, }};
-use actix_web::Error;
+use actix_web::{Error, HttpResponse, Responder, http::StatusCode, web::{self, ServiceConfig, }};
 use actix_web_actors::ws;
 
 pub fn routes(cfg: &mut ServiceConfig) {

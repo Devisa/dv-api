@@ -1,7 +1,6 @@
 use actix::prelude::*;
 use api_db::types::Model;
-use uuid::Uuid;
-use crate::types::now;
+use crate::types::{now, Id};
 use serde::{Serialize, Deserialize};
 use sqlx::{
     FromRow, Postgres, postgres::PgPool,
@@ -31,10 +30,10 @@ impl Model for UserBadge {
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct UserBadge {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil")]
-    pub user_level_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_level_id: Id,
     pub name: String,
     pub description: String,
     pub condition: String,
@@ -44,9 +43,9 @@ pub struct UserBadge {
 }
 
 impl UserBadge {
-    pub fn new(user_level_id: Uuid, name: String, description: String, condition: String) -> Self {
+    pub fn new(user_level_id: Id, name: String, description: String, condition: String) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             user_level_id,
             name,
             description,

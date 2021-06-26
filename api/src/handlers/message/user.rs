@@ -1,8 +1,7 @@
-use uuid::Uuid;
-use crate::{db::Db, util::respond};
+use api_db::{Db, Model, Id};
+use crate::util::respond;
 use api_common::models::{DirectUserMessage, group::Group};
 use actix_web::{
-    http::StatusCode,
     web::{Json, Data, Path, HttpRequest,  ServiceConfig, self}, Responder
 };
 
@@ -41,9 +40,9 @@ pub async fn new_user_dm(
 ) -> impl Responder
 {
     match DirectUserMessage::new(
-        user_dm.sender_id,
-        user_dm.recipient_id,
-        user_dm.content.clone(),
+        user_dm.clone().sender_id,
+        user_dm.clone().recipient_id,
+        user_dm.clone().content.clone(),
     ).send(&db.pool).await {
         Ok(msg) => respond::ok(msg),
         Err(e) => respond::err(e),
@@ -52,13 +51,13 @@ pub async fn new_user_dm(
 pub async fn reply_to_user_dm(
     db: Data<Db>,
     user_dm: Json<DirectUserMessage>,
-    replies_to_id: Path<Uuid>,
+    replies_to_id: Path<Id>,
 ) -> impl Responder
 {
     match DirectUserMessage::reply_to(&db.pool,
         replies_to_id.into_inner(),
-        user_dm.sender_id,
-        user_dm.recipient_id,
+        user_dm.clone().sender_id,
+        user_dm.clone().recipient_id,
         user_dm.content.clone(),
     ).await {
         Ok(msg) => respond::ok(msg),

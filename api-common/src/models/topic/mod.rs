@@ -7,7 +7,7 @@ use sqlx::{
     types::chrono::{NaiveDateTime, Utc}
 };
 use crate::{
-    types::{Status, now, private, Feeling},
+    types::{Id, Status, now, private, Feeling},
     models::{
         Model,
         book::topic::TopicBook,
@@ -17,8 +17,8 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, )]
 pub struct ScoreRequest {
-    #[serde(default = "Uuid::new_v4")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub user_id: Id,
     #[serde(default = "ScoreRequest::zero")]
     pub score: f64,
 }
@@ -26,7 +26,7 @@ pub struct ScoreRequest {
 impl Default for ScoreRequest {
     fn default() -> Self {
         Self {
-            user_id: Uuid::new_v4(),
+            user_id: Id::gen(),
             score: 0.0
         }
     }
@@ -55,8 +55,8 @@ pub enum TopicLinkType {
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Topic {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     pub name: String,
     pub description: Option<String>,
     #[serde(default = "now")]
@@ -133,14 +133,14 @@ impl Model for TopicVote {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TopicCategory {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub category_id: Uuid,
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub topic_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::gen")]
+    pub user_id: Id,
+    #[serde(default = "Id::gen")]
+    pub category_id: Id,
+    #[serde(default = "Id::gen")]
+    pub topic_id: Id,
     pub score: f64,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
@@ -151,8 +151,8 @@ pub struct TopicCategory {
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Category {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -164,12 +164,12 @@ pub struct Category {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TopicVote {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub topic_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
     pub is_for: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub feeling: Option<Feeling>,
@@ -185,7 +185,7 @@ pub struct TopicVote {
 impl Topic {
 
     pub fn new(name: &str, description: Option<String>) -> Self {
-        Self { id: Uuid::new_v4(), name: name.to_string(),
+        Self { id: Id::gen(), name: name.to_string(),
             description,
             created_at: now(),
             updated_at: now()
@@ -198,15 +198,15 @@ impl Topic {
             .fetch_optional(db).await?;
         Ok(res)
     }
-    pub async fn delete_by_name(db: &PgPool, topic: String) -> sqlx::Result<Option<Uuid>> {
-        let res: Option<Uuid> = sqlx::query_scalar("DELETE FROM topics WHERE name = $1 returning id")
+    pub async fn delete_by_name(db: &PgPool, topic: String) -> sqlx::Result<Option<Id>> {
+        let res: Option<Id> = sqlx::query_scalar("DELETE FROM topics WHERE name = $1 returning id")
             .bind(topic)
             .fetch_optional(db).await?;
         Ok(res)
     }
 
 
-    /* pub async fn add_link(self, db: &PgPool, link_id: Uuid) -> sqlx::Result<Self> {
+    /* pub async fn add_link(self, db: &PgPool, link_id: Id) -> sqlx::Result<Self> {
         let top = sqlx::query_scalar("UPDATE topics (name) VALUES ($1) RETURNING id")
             .bind(link_id)
             .fetch_one(db).await?;
@@ -214,7 +214,7 @@ impl Topic {
 
     // }
 
-    pub async fn get_linked<T>(self, db: &PgPool, entity: &str, entity_id: Uuid) -> sqlx::Result<Vec<T>> {
+    pub async fn get_linked<T>(self, db: &PgPool, entity: &str, entity_id: Id) -> sqlx::Result<Vec<T>> {
         Ok(vec![])
     }
 
@@ -227,7 +227,7 @@ impl Topic {
 
     }
 
-    pub async fn post_new_thread(self, db: &PgPool, user_id: Uuid, content: String, image: Option<String>, feeling: Option<Feeling>) -> sqlx::Result<Post> {
+    pub async fn post_new_thread(self, db: &PgPool, user_id: Id, content: String, image: Option<String>, feeling: Option<Feeling>) -> sqlx::Result<Post> {
         let post = Post::new(user_id, content, None, image, feeling)
             .insert(db).await?;
         Ok(post)
@@ -284,7 +284,7 @@ impl Category {
 
     pub fn new(name: String, description: Option<String>) -> Self {
         let cat = Self {
-            name, id: Uuid::new_v4(), description,
+            name, id: Id::gen(), description,
             created_at: now(), updated_at: now()
         };
         cat
@@ -296,19 +296,19 @@ impl Category {
             .fetch_all(db).await?;
         Ok(res)
     }
-    pub async fn get_by_id(db: &PgPool, id: Uuid) -> sqlx::Result<Option<Self>> {
+    pub async fn get_by_id(db: &PgPool, id: Id) -> sqlx::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("SELECT * FROM categories WHERE id = $1")
             .bind(id)
             .fetch_optional(db).await?;
         Ok(res)
     }
-    pub async fn delete_by_id(db: &PgPool, id: Uuid) -> sqlx::Result<Option<Uuid>> {
+    pub async fn delete_by_id(db: &PgPool, id: Id) -> sqlx::Result<Option<Id>> {
         let res = sqlx::query_scalar("DELETE FROM categories WHERE id = $1 ")
             .bind(id)
             .fetch_optional(db).await?;
         Ok(res)
     }
-    pub async fn linked_to_topic(db: &PgPool, topic_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn linked_to_topic(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM categories
             INNER JOIN topic_categories
@@ -319,7 +319,7 @@ impl Category {
             .fetch_all(db).await?;
         Ok(res)
     }
-    pub async fn get_posts(db: &PgPool, topic_id: Uuid) -> sqlx::Result<Vec<Topic>>
+    pub async fn get_posts(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Topic>>
     {
         let res = sqlx::query_as::<Postgres, Topic>("
             SELECT * FROM topics
@@ -335,13 +335,13 @@ impl Category {
 
 impl TopicVote {
 
-    pub fn new(user_id: Uuid, topic_id: Uuid, is_for: bool, feeling: Option<Feeling>, description: Option<String>) -> Self {
+    pub fn new(user_id: Id, topic_id: Id, is_for: bool, feeling: Option<Feeling>, description: Option<String>) -> Self {
         Self {
-            feeling, is_for, user_id, topic_id, id: Uuid::new_v4(), description,
+            feeling, is_for, user_id, topic_id, id: Id::gen(), description,
             created_at: now(), updated_at: now()
         }
     }
-    pub async fn linked_to_topic(db: &PgPool, topic_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn linked_to_topic(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("SELECT * FROM topic_votes WHERE topic_id = $1")
             .bind(topic_id)
             .fetch_all(db).await?;
@@ -351,15 +351,15 @@ impl TopicVote {
 
 impl TopicCategory {
 
-    pub fn new(user_id: Uuid, category_id: Uuid, topic_id: Uuid, score: Option<f64>) -> Self {
+    pub fn new(user_id: Id, category_id: Id, topic_id: Id, score: Option<f64>) -> Self {
         Self {
             user_id,
-            category_id, topic_id, score: score.unwrap_or(0.0), id: Uuid::new_v4(),
+            category_id, topic_id, score: score.unwrap_or(0.0), id: Id::gen(),
             created_at: now(), updated_at: now()
         }
     }
 
-    pub async fn get_scores_between(db: &PgPool, topic_id: Uuid, category_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_scores_between(db: &PgPool, topic_id: Id, category_id: Id) -> sqlx::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM topic_categories
             WHERE topic_id = $1
@@ -371,7 +371,7 @@ impl TopicCategory {
         Ok(res)
     }
 
-    pub async fn get_all_by_user(db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>>
+    pub async fn get_all_by_user(db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>>
     {
         let res = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM topic_categories WHERE user_id = $1
@@ -381,7 +381,7 @@ impl TopicCategory {
         Ok(res)
     }
     pub async fn linked_to_topic(
-        db: &PgPool, topic_id: Uuid
+        db: &PgPool, topic_id: Id
     ) -> sqlx::Result<Vec<Self>>
     {
         let res = sqlx::query_as::<Postgres, Self>("SELECT * FROM topic_categories WHERE topic_id = $1")
@@ -391,7 +391,7 @@ impl TopicCategory {
     }
 
     pub async fn update_score(
-        db: &PgPool, user_id: Uuid, topic_id: Uuid, category_id: Uuid, score: f64
+        db: &PgPool, user_id: Id, topic_id: Id, category_id: Id, score: f64
     ) -> sqlx::Result<Option<Self>>
     {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -426,14 +426,14 @@ pub struct TopicData {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize)]
 pub struct TopicUserSubscriber {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub topic_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
+    pub link_id: Option<Id>,
     #[serde(default = "primary")]
     pub primary: bool,
     #[serde(default = "Status::default")]
@@ -448,14 +448,14 @@ pub struct TopicUserSubscriber {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize)]
 pub struct TopicGroupSubscriber {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub topic_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub group_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
+    #[serde(default = "Id::nil")]
+    pub group_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
+    pub link_id: Option<Id>,
     #[serde(default = "primary")]
     pub primary: bool,
     #[serde(default = "Status::default")]
@@ -470,14 +470,14 @@ pub struct TopicGroupSubscriber {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize)]
 pub struct TopicRelation {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub topic1_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub topic2_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic1_id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic2_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
+    pub link_id: Option<Id>,
     #[serde(default = "Status::default")]
     pub status: Status,
     #[serde(default = "now")]
@@ -488,22 +488,22 @@ pub struct TopicRelation {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize)]
 pub struct TopicLink {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil")]
-    pub topic_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub item_id: Option<Uuid>,
+    pub item_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub field_id: Option<Uuid>,
+    pub field_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub record_id: Option<Uuid>,
+    pub record_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub group_id: Option<Uuid>,
+    pub group_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub post_id: Option<Uuid>,
+    pub post_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub link_id: Option<Uuid>,
+    pub link_id: Option<Id>,
     #[serde(default = "Status::default")]
     pub status: Status,
     #[serde(default = "primary")]
@@ -603,8 +603,8 @@ impl Actor for Topic {
 // // }
 
 // pub struct TopicLinkEstablishment {
-//     id: Option<Uuid>,
-//     link_id: Option<Uuid>,
+//     id: Option<Id>,
+//     link_id: Option<Id>,
 //     user: User,
 //     created_at: NaiveDate,
 // }

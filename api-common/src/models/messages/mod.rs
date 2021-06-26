@@ -7,6 +7,7 @@ pub use group::{DirectGroupMessageReadReceipt, DirectGroupMessage};
 pub use topic::DirectTopicMessage;
 use chrono::NaiveDateTime;
 use crate::types::now;
+use api_db::types::Id;
 use sqlx::PgPool;
 
 pub struct GenericDirectMessage {
@@ -19,10 +20,10 @@ pub struct GenericDirectMessage {
 
 #[derive(Default)]
 pub struct GenericMessageBuilder {
-    pub id: Uuid,
-    pub sender_id: Option<Uuid>,
-    pub recipient_id: Option<Uuid>,
-    pub replies_to_id: Option<Uuid>,
+    pub id: Id,
+    pub sender_id: Option<Id>,
+    pub recipient_id: Option<Id>,
+    pub replies_to_id: Option<Id>,
     pub content: Option<String>,
     pub attachments: Vec<String>,
     pub sent_at: Option<NaiveDateTime>,
@@ -32,23 +33,23 @@ pub struct GenericMessageBuilder {
 impl GenericMessageBuilder {
 
     pub fn new(
-        sender_id: Option<Uuid>,
-        recipient_id: Option<Uuid>,
-        replies_to_id: Option<Uuid>,
+        sender_id: Option<Id>,
+        recipient_id: Option<Id>,
+        replies_to_id: Option<Id>,
         content: Option<String>,
         attachments: Vec<String>,
         sent_at: Option<NaiveDateTime>,
         read_at: Option<NaiveDateTime>
     ) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             sender_id, recipient_id, replies_to_id, content, attachments, sent_at, read_at
         }
     }
 
     pub async fn send_to_user(self,
         db: &PgPool,
-        user_id: Uuid) -> anyhow::Result<DirectUserMessage> {
+        user_id: Id) -> anyhow::Result<DirectUserMessage> {
         let user_msg = DirectUserMessage {
             recipient_id: user_id,
             id: self.id,
@@ -66,7 +67,7 @@ impl GenericMessageBuilder {
 
     pub async fn send_to_topic(self,
         db: &PgPool,
-        topic_id: Uuid) -> anyhow::Result<DirectTopicMessage> {
+        topic_id: Id) -> anyhow::Result<DirectTopicMessage> {
         let topic_msg = DirectTopicMessage {
             topic_id,
             id: self.id,
@@ -83,7 +84,7 @@ impl GenericMessageBuilder {
 
     pub async fn send_to_group(self,
         db: &PgPool,
-        group_id: Uuid
+        group_id: Id
     ) -> anyhow::Result<DirectGroupMessage>
     {
         let group_msg = DirectGroupMessage {

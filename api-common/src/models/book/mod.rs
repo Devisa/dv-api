@@ -9,7 +9,7 @@ use uuid::Uuid;
 use api_db::types::Model;
 use crate::{
     models::post::Post,
-    types::{Status, now,Feeling, private}
+    types::{Id, Status, now,Feeling, private}
 };
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -19,10 +19,10 @@ use sqlx::{
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Book {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub name: String,
     #[serde(default = "Status::default")]
     pub status: Status,
@@ -68,8 +68,8 @@ impl Model for Book {
 impl Default for Book {
     fn default() -> Self {
         Self {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             description: None,
             name: String::new(),
             image: None,
@@ -85,7 +85,7 @@ impl Default for Book {
 
 impl Book {
 
-    pub fn new(name: String, user_id: Uuid) -> Self {
+    pub fn new(name: String, user_id: Id) -> Self {
         Self { user_id, name, ..Default::default()}
     }
 
@@ -94,7 +94,7 @@ impl Book {
         content: String,
         feeling: Option<Feeling>,
         image: Option<String>,
-        user_id: Uuid) -> sqlx::Result<Self>
+        user_id: Id) -> sqlx::Result<Self>
     {
         let post = Post::new(user_id, content, None, image, feeling)
             .insert(&db)
@@ -119,7 +119,7 @@ impl Book {
         Ok(id)
     }
 
-    pub async fn add_to_entity(self, db: &PgPool, entity: &str, id: Uuid, link_id: Option<Uuid>) -> sqlx::Result<Self> {
+    pub async fn add_to_entity(self, db: &PgPool, entity: &str, id: Id, link_id: Option<Id>) -> sqlx::Result<Self> {
         let (table, id_ref) = match entity {
             "group" => ("group_book_links", "group_id"),
             "record" => ("record_book_links", "record_id"),

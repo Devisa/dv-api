@@ -1,6 +1,5 @@
 use actix::prelude::*;
-use uuid::Uuid;
-use api_db::types::Model;
+use api_db::types::{Id, Model};
 use crate::types::now;
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -10,10 +9,10 @@ use sqlx::{
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Channel {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -47,9 +46,9 @@ pub struct RecordChannel {}
 
 impl Channel {
 
-    pub fn new(user_id: Uuid, name: String, description: Option<String>) -> Self {
+    pub fn new(user_id: Id, name: String, description: Option<String>) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             updated_at: now(),
             created_at: now(),
             user_id, name, description
@@ -172,7 +171,7 @@ impl Actor for Channel {
 
 
 // pub struct ChannelSession {
-//     pub id: Option<Uuid>,
+//     pub id: Option<Id>,
 //     pub addr: Addr<ChannelServer>,
 //     pub hb: Instant,
 //     pub room: String,
@@ -283,25 +282,25 @@ impl Actor for Channel {
 // }
 
 // pub struct TopicChannel {
-//     pub id: Option<Uuid>,
-//     pub channel_id: Uuid,
-//     pub topic_id: Uuid,
+//     pub id: Option<Id>,
+//     pub channel_id: Id,
+//     pub topic_id: Id,
 //     pub rooom: String,
 //     pub private: bool,
 // }
 
 // pub struct RecordChannel {
-//     pub id: Option<Uuid>,
-//     pub channel_id: Uuid,
-//     pub record_id: Uuid,
+//     pub id: Option<Id>,
+//     pub channel_id: Id,
+//     pub record_id: Id,
 //     pub rooom: String,
 //     pub private: bool,
 // }
 
 // pub struct GroupChannel {
-//     pub id: Option<Uuid>,
-//     pub channel_id: Uuid,
-//     pub group_id: Uuid,
+//     pub id: Option<Id>,
+//     pub channel_id: Id,
+//     pub group_id: Id,
 //     pub rooom: String,
 //     pub private: bool,
 // }
@@ -309,9 +308,9 @@ impl Actor for Channel {
 // #[derive(Message)]
 // #[rtype(result = "()")]
 // pub struct ChannelMessage {
-//     pub id: Option<Uuid>,
-//     pub user_id: Uuid,
-//     pub channel_id: Uuid,
+//     pub id: Option<Id>,
+//     pub user_id: Id,
+//     pub channel_id: Id,
 //     pub sent: NaiveDateTime,
 // }
 

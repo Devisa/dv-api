@@ -1,6 +1,6 @@
 use actix::prelude::*;
 use uuid::Uuid;
-use crate::types::{Status, now, private};
+use crate::types::{Id, Status, now, private};
 use crate::models::{
     Model,
     link::{LinkedTo, Link, Linked}
@@ -14,10 +14,10 @@ use super::{Field,User, Topic, item::Item};
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Record {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
     pub name: String,
     #[serde(default = "private")]
     pub private: bool,
@@ -37,14 +37,14 @@ pub struct Record {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RecordRelation {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if="Uuid::is_nil")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub link_id: Option<Uuid>,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub record1_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub record2_id: Uuid,
+    pub link_id: Option<Id>,
+    #[serde(default = "Id::nil")]
+    pub record1_id: Id,
+    #[serde(default = "Id::nil")]
+    pub record2_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,14 +59,14 @@ pub struct RecordRelation {
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RecordItem {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if="Uuid::is_nil")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub link_id: Option<Uuid>,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub record_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
-    pub item_id: Uuid,
+    pub link_id: Option<Id>,
+    #[serde(default = "Id::nil")]
+    pub record_id: Id,
+    #[serde(default = "Id::nil")]
+    pub item_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,9 +82,9 @@ pub struct RecordItem {
 impl Default for RecordItem {
     fn default() -> Self {
         Self {
-            id: Uuid::new_v4(),
-            record_id: Uuid::nil(),
-            item_id: Uuid::nil(),
+            id: Id::gen(),
+            record_id: Id::nil(),
+            item_id: Id::nil(),
             link_id: None,
             name: None,
             description: None,
@@ -109,21 +109,21 @@ impl Linked for RecordItem {
     type Left = Record;
     type Right = Item;
 
-    fn new_basic(left_id: Uuid, right_id: Uuid, link_id: Option<Uuid>) -> Self {
+    fn new_basic(left_id: Id, right_id: Id, link_id: Option<Id>) -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: Id::gen(),
             record_id: left_id, item_id: right_id, link_id,
             ..Default::default()
         }
     }
 
-    fn link_id(self) -> Option<Uuid> { self.link_id }
-    fn left_id(self) -> Uuid { self.record_id }
-    fn right_id(self) -> Uuid { self.item_id }
+    fn link_id(self) -> Option<Id> { self.link_id }
+    fn left_id(self) -> Id { self.record_id }
+    fn right_id(self) -> Id { self.item_id }
 }
 
 impl RecordItem {
-    pub fn new(record_id: Uuid, item_id: Uuid, link_id: Option<Uuid>, name: Option<String>, description: Option<String>) -> Self {
+    pub fn new(record_id: Id, item_id: Id, link_id: Option<Id>, name: Option<String>, description: Option<String>) -> Self {
         Self {
             record_id, item_id, link_id, name, description, ..Default::default()
         }
@@ -176,7 +176,7 @@ impl super::Model for RecordItem {
 
 impl Record {
 
-    pub fn new(name: String, user_id: Uuid) -> Self {
+    pub fn new(name: String, user_id: Id) -> Self {
         Self {
             user_id, name, ..Default::default()
         }
@@ -188,14 +188,14 @@ impl Record {
     //     Ok(res)
     // }
 
-    // pub async fn get(db: &PgPool, id: Uuid) -> anyhow::Result<Option<Self>> {
+    // pub async fn get(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
     //     let res = sqlx::query_as::<Postgres, Record>("SELECT * FROM records WHERE id = $1")
     //         .bind(id)
     //         .fetch_optional(db).await?;
     //     Ok(res)
     // }
 
-    pub async fn update_by_id(db: &PgPool, id: Uuid, r: Record)
+    pub async fn update_by_id(db: &PgPool, id: Id, r: Record)
         -> anyhow::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
             UPDATE records
@@ -221,14 +221,14 @@ impl Record {
         Ok(res)
     }
 
-    pub async fn get_all_by_user_id(db: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Self>> {
+    pub async fn get_all_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Vec<Self>> {
         let res = sqlx::query_as::<Postgres, Record>("SELECT * FROM records WHERE user_id = ?")
             .bind(user_id)
             .fetch_all(db).await?;
         Ok(res)
     }
 
-    // pub async fn delete(db: &PgPool, id: Uuid) -> anyhow::Result<Uuid> {
+    // pub async fn delete(db: &PgPool, id: Id) -> anyhow::Result<Uuid> {
     //     let res = sqlx::query_scalar("DELETE FROM records WHERE id = $1 RETURNING id")
     //         .bind(id)
     //         .fetch_optional(db).await?;
@@ -237,16 +237,16 @@ impl Record {
 
 
     pub async fn add_new_item(self, db: &PgPool, item_name: String) -> anyhow::Result<Self> {
-        let item = Item::new(item_name, self.user_id).insert(&db).await?;
-        let item_link = RecordItem::new(self.id, item.id, None, None, None).insert(&db).await?;
-        Ok(self)
+        let item = Item::new(item_name, self.clone().user_id).insert(&db).await?;
+        let item_link = RecordItem::new(self.clone().id, item.id, None, None, None).insert(&db).await?;
+        Ok(Self { ..self })
     }
 
-    pub async fn add_existing_item(self, db: &PgPool, item_id: Uuid) -> anyhow::Result<Self> {
+    pub async fn add_existing_item(self, db: &PgPool, item_id: Id) -> anyhow::Result<RecordItem> {
         let item = Item::get(&db, item_id).await?;
         if let Some(item) = item {
-            let item_link = RecordItem::new(self.id, item.id, None, None, None).insert(&db).await?;
-            Ok(self)
+            let item_link = RecordItem::new(self.clone().id, item.id, None, None, None).insert(&db).await?;
+            Ok(item_link)
         } else {
             return Err(anyhow::anyhow!("Item does not exist"));
         }
@@ -286,21 +286,21 @@ pub struct RecordName {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewRecord {
     pub name: String,
-    pub user_id: Uuid,
+    pub user_id: Id,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewRecordItem {
     pub name: String,
     pub item: String,
-    pub user_id: Uuid,
+    pub user_id: Id,
 }
 
 impl Default for Record {
     fn default() -> Self {
         Record {
-            id: Uuid::new_v4(),
-            user_id: Uuid::nil(),
+            id: Id::gen(),
+            user_id: Id::nil(),
             name: String::new(),
             private: true,
             status: Status::Active,
@@ -345,7 +345,7 @@ pub enum RecordEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecordPost {
-    id: Uuid,
+    id: Id,
     user: User,
     content: String,
     created_at: NaiveDateTime,

@@ -1,14 +1,12 @@
 pub mod topic;
 pub mod group;
 
-use actix::prelude::*;
-use uuid::Uuid;
-use crate::{db::Db, util::respond};
-use api_common::models::{channel::Channel, Model, group::Group};
+use api_db::{Model, Id, Db};
+use crate::util::respond;
+use api_common::models::{channel::Channel, group::Group};
 use sqlx::{prelude::*, postgres::Postgres};
 use actix_web::{
-    http::StatusCode,
-    Responder, delete, get, post,
+    Responder,
     web::{Json, Path, Data, HttpRequest,  ServiceConfig, self},
 };
 
@@ -59,7 +57,7 @@ pub async fn new_channel(db: Data<Db>, ch: Json<Channel>) -> impl Responder {
     }
 }
 // #[get("/{channel_id}")]
-pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Channel::get(&db.pool, id.into_inner()).await {
         Ok(Some(ch)) => respond::ok(ch),
         Ok(None) => respond::not_found("No channel with that id"),
@@ -68,7 +66,7 @@ pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
 }
 
 // #[get("/{channel_id}/start")]
-pub async fn start_channel(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn start_channel(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Channel::get(&db.pool, id.into_inner()).await {
         Ok(Some(ch)) => {
             respond::ok(ch)
@@ -77,7 +75,7 @@ pub async fn start_channel(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
         Err(e) => respond::err(e)
     }
 }
-pub async fn stop_channel(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn stop_channel(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Channel::get(&db.pool, id.into_inner()).await {
         Ok(Some(ch)) => {
             respond::ok(ch)
@@ -86,7 +84,7 @@ pub async fn stop_channel(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
         Err(e) => respond::err(e)
     }
 }
-pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Channel::delete(&db.pool, id.into_inner()).await {
         Ok(Some(ch)) => respond::ok(ch),
         Ok(None) => respond::not_found("No channel with that id"),

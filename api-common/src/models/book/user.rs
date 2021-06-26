@@ -1,6 +1,6 @@
 use actix_web::guard::Post;
 use crate::{
-    types::{Status, now, private}
+    types::{Id, Status, now, private}
 };
 use sqlx::{FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}, PgPool};
 use serde::{Serialize, Deserialize};

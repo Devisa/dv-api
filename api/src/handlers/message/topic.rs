@@ -1,7 +1,6 @@
-use uuid::Uuid;
-use crate::{db::Db, util::respond};
+use api_db::{Db, Model, Id};
+use crate::util::respond;
 use api_common::models::{
-    Model,
     topic::Topic,
     messages::DirectTopicMessage,
 };
@@ -48,8 +47,8 @@ pub async fn new_topic_dm(
 ) -> impl Responder
 {
     match DirectTopicMessage::new_thread(&db.pool,
-        topic_dm.sender_id,
-        topic_dm.topic_id,
+        topic_dm.clone().sender_id,
+        topic_dm.clone().topic_id,
         topic_dm.content.clone(),
     ).await {
         Ok(msg) => respond::ok(msg),
@@ -59,13 +58,13 @@ pub async fn new_topic_dm(
 pub async fn reply_to_topic_dm(
     db: Data<Db>,
     topic_dm: Json<DirectTopicMessage>,
-    replies_to_id: Path<Uuid>,
+    replies_to_id: Path<Id>,
 ) -> impl Responder
 {
     match DirectTopicMessage::reply_to(&db.pool,
         replies_to_id.into_inner(),
-        topic_dm.sender_id,
-        topic_dm.topic_id,
+        topic_dm.clone().sender_id,
+        topic_dm.clone().topic_id,
         topic_dm.content.clone(),
     ).await {
         Ok(msg) => respond::ok(msg),
@@ -90,13 +89,13 @@ pub async fn get_all_replies(db: Data<Db>) -> impl Responder {
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_all_topic_thread_starters(db: Data<Db>, topic_id: Path<Uuid>) -> impl Responder {
+pub async fn get_all_topic_thread_starters(db: Data<Db>, topic_id: Path<Id>) -> impl Responder {
     match DirectTopicMessage::get_all_topic_thread_starters(&db.pool, topic_id.into_inner()).await {
         Ok(messages) => respond::ok(messages),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_all_topic_replies(db: Data<Db>, topic_id: Path<Uuid>) -> impl Responder {
+pub async fn get_all_topic_replies(db: Data<Db>, topic_id: Path<Id>) -> impl Responder {
     match DirectTopicMessage::get_all_topic_replies(&db.pool, topic_id.into_inner()).await {
         Ok(messages) => respond::ok(messages),
         Err(e) => respond::err(e),

@@ -7,9 +7,24 @@ use derive_more::{AsRef, AsMut, Display, From};
 #[sqlx(transparent, type_name = "session_token")]
 pub struct SessionToken(String);
 
-#[derive(From, AsRef, AsMut, Display)]
+#[derive(sqlx::Type, From, AsRef, AsMut, Display)]
+#[sqlx(transparent, type_name = "access_token")]
 pub struct AccessToken(String);
 
+
+impl SessionToken {
+
+    pub fn empty() -> Self {
+        Self(String::new())
+    }
+}
+
+impl AccessToken {
+
+    pub fn empty() -> Self {
+        Self(String::new())
+    }
+}
 
 #[derive(sqlx::Type, From, AsRef, AsMut, Display)]
 #[sqlx(transparent, type_name = "refresh_token")]

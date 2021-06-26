@@ -1,8 +1,7 @@
-use uuid::Uuid;
+use api_db::{Db, Model, Id};
 use crate::util::respond;
-use api_db::{Db, Model};
-use api_common::models::{
-        topic::{ScoreRequest, TopicVote, Category, TopicCategory, Topic},
+use api_common::models::topic::{
+    ScoreRequest, TopicVote, Category, TopicCategory, Topic
 };
 use actix_web::{HttpResponse, Responder, web::{Json, Path, Data, HttpRequest,  ServiceConfig, self}};
 
@@ -69,7 +68,7 @@ pub mod category {
 
 }
 
-pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Topic::get(&db.pool, id.into_inner()).await {
         Ok(Some(topic)) => respond::ok(topic),
         Ok(None) => respond::not_found("No topics"),
@@ -90,7 +89,7 @@ pub async fn delete_by_name(db: Data<Db>, topic: Path<String>) -> impl Responder
         Err(e) => respond::err(e),
     }
 }
-pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Topic::delete(&db.pool, id.into_inner()).await {
         Ok(Some(id)) => respond::ok(id),
         Ok(None) => respond::not_found("No topics"),
@@ -103,13 +102,13 @@ pub async fn add_topic(db: Data<Db>, topic: Json<Topic>) -> impl Responder {
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_topic_categories(db: Data<Db>, topic_id: Path<Uuid>) -> impl Responder {
+pub async fn get_topic_categories(db: Data<Db>, topic_id: Path<Id>) -> impl Responder {
     match TopicCategory::linked_to_topic(&db.pool, topic_id.into_inner()).await {
         Ok(topic) => respond::ok(topic),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_topic_votes(db: Data<Db>, topic_id: Path<Uuid>) -> impl Responder {
+pub async fn get_topic_votes(db: Data<Db>, topic_id: Path<Id>) -> impl Responder {
     match TopicVote::linked_to_topic(&db.pool, topic_id.into_inner()).await {
         Ok(topic) => respond::ok(topic),
         Err(e) => respond::err(e),
@@ -121,26 +120,26 @@ pub async fn get_all_topic_votes(db: Data<Db>) -> impl Responder {
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_topic_vote_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_topic_vote_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match TopicVote::get(&db.pool, id.into_inner()).await {
         Ok(topic) => respond::ok(topic),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_category_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_category_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Category::get(&db.pool, id.into_inner()).await {
         Ok(cat) => respond::ok(cat),
         Err(e) => respond::err(e),
     }
 }
-pub async fn del_topic_vote_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn del_topic_vote_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match TopicVote::delete(&db.pool, id.into_inner()).await {
         Ok(topic) => respond::ok(topic),
         Err(e) => respond::err(e),
     }
 }
 
-pub async fn get_topic_category_score(db: Data<Db>, path: Path<(Uuid, Uuid)>) -> impl Responder {
+pub async fn get_topic_category_score(db: Data<Db>, path: Path<(Id, Id)>) -> impl Responder {
     let (tid, cid) = path.into_inner();
     match TopicCategory::get_scores_between(&db.pool, tid, cid).await {
         Ok(c) => respond::ok(c),
@@ -148,16 +147,16 @@ pub async fn get_topic_category_score(db: Data<Db>, path: Path<(Uuid, Uuid)>) ->
     }
 }
 
-pub async fn update_topic_category_score(db: Data<Db>, path: Path<(Uuid, Uuid)>, score: web::Query<ScoreRequest>) -> impl Responder {
+pub async fn update_topic_category_score(db: Data<Db>, path: Path<(Id, Id)>, score: web::Query<ScoreRequest>) -> impl Responder {
     let (tid, cid) = path.into_inner();
-    match TopicCategory::update_score(&db.pool, score.user_id, tid, cid, score.score).await {
+    match TopicCategory::update_score(&db.pool, score.clone().into_inner().user_id, tid, cid, score.clone().into_inner().score).await {
         Ok(Some(c)) => respond::ok(c),
         Ok(None) => respond::not_found("No topics"),
         Err(e) => respond::err(e),
     }
 }
 
-pub async fn del_category_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn del_category_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Category::delete_by_id(&db.pool, id.into_inner()).await {
         Ok(cat) => respond::ok(cat),
         Err(e) => respond::err(e),
@@ -169,10 +168,10 @@ pub async fn get_all_categories(db: Data<Db>) -> impl Responder {
         Err(e) => respond::err(e),
     }
 }
-pub async fn add_category(db: Data<Db>, topic_id: Path<Uuid>, cat: Json<Category>, score: Json<ScoreRequest>) -> impl Responder {
+pub async fn add_category(db: Data<Db>, topic_id: Path<Id>, cat: Json<Category>, score: Json<ScoreRequest>) -> impl Responder {
     match cat.into_inner().insert(&db.pool).await {
         Ok(cat) => {
-            let t_c = TopicCategory::new(score.user_id, cat.id, topic_id.into_inner(), Some(score.score));
+            let t_c = TopicCategory::new(score.clone().user_id, cat.id, topic_id.into_inner(), Some(score.score));
             match t_c.insert(&db.pool).await {
                 Ok(topic_cat) => respond::ok(topic_cat),
                 Err(e) => respond::err(e),
@@ -195,10 +194,10 @@ pub async fn add_topic_vote_by_id(db: Data<Db>, vote: Json<TopicVote>) -> impl R
     }
 }
 
-pub async fn add_topic_category_id(db: Data<Db>, topic_id: Path<Uuid>, category: Json<Category>, score: web::Query<ScoreRequest>) -> impl Responder {
+pub async fn add_topic_category_id(db: Data<Db>, topic_id: Path<Id>, category: Json<Category>, score: web::Query<ScoreRequest>) -> impl Responder {
     match category.into_inner().insert(&db.pool).await {
         Ok(c) => {
-            let topic_cat = TopicCategory::new(score.user_id, c.id, topic_id.into_inner(), Some(score.score));
+            let topic_cat = TopicCategory::new(score.clone().into_inner().user_id, c.id, topic_id.clone(), Some(score.score));
             match topic_cat.insert(&db.pool).await {
                 Ok(tc) => respond::ok(tc),
                 Err(e) => respond::err(e),
@@ -208,9 +207,9 @@ pub async fn add_topic_category_id(db: Data<Db>, topic_id: Path<Uuid>, category:
     }
 }
 
-pub async fn add_topic_category_score(db: Data<Db>, path: Path<(Uuid, Uuid)>,score: web::Query<ScoreRequest>) -> impl Responder {
+pub async fn add_topic_category_score(db: Data<Db>, path: Path<(Id, Id)>,score: web::Query<ScoreRequest>) -> impl Responder {
     let (topic_id, category_id) = path.into_inner();
-    match TopicCategory::update_score(&db.pool, score.user_id, topic_id, category_id, score.score).await {
+    match TopicCategory::update_score(&db.pool, score.clone().into_inner().user_id, topic_id, category_id, score.score).await {
         Ok(Some(topic_category)) => respond::ok(topic_category),
         Ok(None) => respond::not_found("Topic not found"),
         Err(e) => respond::err(e),
@@ -219,7 +218,7 @@ pub async fn add_topic_category_score(db: Data<Db>, path: Path<(Uuid, Uuid)>,sco
 
 // #[post("/{topic}")]
 pub async fn new_topic_name(db: Data<Db>, topic: Path<String>) -> impl Responder {
-    let res: Uuid = sqlx::query_scalar("INSERT INTO topics (name) VALUES $1 returning id")
+    let res: Id = sqlx::query_scalar("INSERT INTO topics (name) VALUES $1 returning id")
         .bind(topic.into_inner())
         .fetch_one(&db.pool).await.unwrap();
     respond::ok(res)

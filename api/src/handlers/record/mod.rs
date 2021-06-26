@@ -1,14 +1,10 @@
-use crate::{
-    db::Db,
-    util::respond,
-};
-use api_db::types::Model;
+use crate::util::respond;
+use api_db::{Model, Db, Id};
 use api_common::models::{
     link::{LinkedTo, Linked},
     record::{Record, RecordItem},
     item::Item,
 };
-use uuid::Uuid;
 use actix_web::web::{Json, Data, Path,Form, HttpRequest, HttpResponse, ServiceConfig,  self};
 use actix_web::Responder;
 
@@ -105,7 +101,7 @@ pub async fn create_record(db: Data<Db>, record: Form<Record>) -> impl Responder
 }
 
 // #[get("/{record_id}")]
-pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Record::get(&db.pool, id.clone()).await {
         Ok(Some(record)) => respond::found(record),
         Ok(None) => respond::not_found("COULD NOT FIND"),
@@ -114,7 +110,7 @@ pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
 }
 
 // #[post("/{record_id}")]
-pub async fn update_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn update_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Record::get(&db.pool, id.clone()).await {
         Ok(Some(record)) => respond::found(record),
         Ok(None) => respond::not_found("COULD NOT FIND"),
@@ -123,7 +119,7 @@ pub async fn update_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
 }
 
 // #[delete("/{record_id}")]
-pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Record::delete(&db.pool, id.clone()).await {
         Ok(Some(record)) => respond::gone("DELETED RECORD"),
         Ok(None) => respond::not_found("COULD NOT FIND"),
@@ -132,7 +128,7 @@ pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
 }
 
 // #[post("/item")]
-pub async fn add_new_item(db: Data<Db>, record_id: Path<Uuid>, item: Json<Item>) -> impl Responder {
+pub async fn add_new_item(db: Data<Db>, record_id: Path<Id>, item: Json<Item>) -> impl Responder {
     match Record::get(&db.pool, record_id.clone()).await {
         Ok(Some(rec)) => {
             match item.into_inner().insert(&db.pool).await {
@@ -152,7 +148,7 @@ pub async fn add_new_item(db: Data<Db>, record_id: Path<Uuid>, item: Json<Item>)
 }
 
 // #[post("/item/{item_id}")]
-pub async fn add_existing_item(db: Data<Db>, path: Path<(Uuid, Uuid)>, item_id: Json<Item>) -> impl Responder {
+pub async fn add_existing_item(db: Data<Db>, path: Path<(Id, Id)>, item_id: Json<Item>) -> impl Responder {
     let (record_id, item_id) = path.into_inner();
     match (Record::get(&db.pool, record_id.clone()).await, Item::get(&db.pool, item_id.clone()).await) {
         (Ok(Some(record)), Ok(Some(item))) => {
@@ -170,7 +166,7 @@ pub async fn add_existing_item(db: Data<Db>, path: Path<(Uuid, Uuid)>, item_id: 
 }
 
 // #[get("/item")]
-pub async fn get_record_items(db: Data<Db>, record_id: Path<Uuid>) -> impl Responder {
+pub async fn get_record_items(db: Data<Db>, record_id: Path<Id>) -> impl Responder {
     match Record::get(&db.pool, record_id.clone()).await {
         Ok(Some(rec)) => {
             match <Record as LinkedTo<Item>>::get_links_to_entry(&db.pool, record_id.clone()).await {
@@ -185,7 +181,7 @@ pub async fn get_record_items(db: Data<Db>, record_id: Path<Uuid>) -> impl Respo
 
 
 // #[get("/item/{item_id}")]
-pub async fn get_record_item_link(db: Data<Db>, path: Path<(Uuid, Uuid)>) -> impl Responder {
+pub async fn get_record_item_link(db: Data<Db>, path: Path<(Id, Id)>) -> impl Responder {
     let (record_id, item_id) = path.into_inner();
     match (Record::get(&db.pool, record_id.clone()).await, Item::get(&db.pool, item_id.clone()).await) {
         (Ok(Some(record)), Ok(Some(item))) => {
@@ -216,7 +212,7 @@ pub async fn new_record_item(db: Data<Db>, record_item: Json<RecordItem>) -> imp
 }
 
 
-pub async fn get_records_with_item(db: Data<Db>, item_id: Path<Uuid>) -> impl Responder {
+pub async fn get_records_with_item(db: Data<Db>, item_id: Path<Id>) -> impl Responder {
     match <Record as LinkedTo<Item>>::get_entries_linked_to(&db.pool, item_id.into_inner()).await {
         Ok(records) => respond::ok(records),
         Err(e) => respond::err(e),

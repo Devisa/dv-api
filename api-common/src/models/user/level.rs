@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use actix::prelude::*;
 use crate::{
-    types::now,
+    types::{now, Id,},
     models::user::UserBadge,
 };
 use serde::{Serialize, Deserialize};
@@ -13,10 +13,10 @@ use sqlx::{
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct UserLevel {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub user_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
    #[serde(default = "starting_level")]
     pub level: u32,
    #[serde(default = "starting_exp")]
@@ -29,9 +29,9 @@ pub struct UserLevel {
 }
 
 impl UserLevel {
-    pub fn create(user_id: Uuid) -> Self {
+    pub fn create(user_id: Id) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             user_id,
             level: starting_level(),
             exp: starting_exp(),
@@ -54,7 +54,7 @@ impl UserLevel {
         Ok(self)
     }
 
-    pub async fn get_by_user_id(db: &PgPool, user_id: uuid::Uuid) -> sqlx::Result<Option<Self>> {
+    pub async fn get_by_user_id(db: &PgPool, user_id: Id) -> sqlx::Result<Option<Self>> {
         let level = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM user_levels
             WHERE user_id = $1")
@@ -63,7 +63,7 @@ impl UserLevel {
         Ok(level)
     }
 
-    pub async fn get_badges(db: &PgPool, user_level_id: Uuid) -> sqlx::Result<Vec<UserBadge>> {
+    pub async fn get_badges(db: &PgPool, user_level_id: Id) -> sqlx::Result<Vec<UserBadge>> {
         let badges = sqlx::query_as::<Postgres, UserBadge>("
             SELECT * FROM user_badges
             WHERE user_level_id = $1")

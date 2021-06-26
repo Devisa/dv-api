@@ -1,8 +1,7 @@
-use crate::{util::respond, db::Db};
+use crate::util::respond;
 use api_common::models::link::Link;
-use api_common::models::Model;
-use uuid::Uuid;
-use actix_web::{get, post, web::{Json, Path, Data, self, ServiceConfig}, Responder};
+use api_db::{Model, Id, Db};
+use actix_web::{web::{Json, Path, Data, self, ServiceConfig}, Responder};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -30,7 +29,7 @@ pub async fn new_abstract_link(db: Data<Db>, link: Json<Link>) -> impl Responder
     }
 }
 
-pub async fn get_by_id(db: Data<Db>, link_id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, link_id: Path<Id>) -> impl Responder {
     match Link::get(&db.pool, link_id.into_inner()).await {
         Ok(Some(link)) => respond::ok(link),
         Ok(None) => respond::not_found("No link with that id"),

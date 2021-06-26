@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_db::types::Id;
 use super::GenericMessageBuilder;
 use serde::{Serialize, Deserialize};
 use crate::{
@@ -13,14 +13,14 @@ use chrono::Utc;
 
 #[derive(Debug, Clone, PartialEq, FromRow, Serialize, Deserialize)]
 pub struct DirectTopicMessage {
-    #[serde(default = "Uuid::new_v4", skip_serializing_if = "Uuid::is_nil")]
-    pub id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub sender_id: Uuid,
-    #[serde(default = "Uuid::nil", skip_serializing_if = "Uuid::is_nil")]
-    pub topic_id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub sender_id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub replies_to_id: Option<Uuid>,
+    pub replies_to_id: Option<Id>,
     pub content: String,
     #[serde(default = "Vec::new")]
     pub attachments: Vec<String>,
@@ -56,9 +56,9 @@ impl Model for DirectTopicMessage {
 impl Default for DirectTopicMessage {
     fn default() -> Self {
         Self {
-            id: Uuid::new_v4(),
-            sender_id: Uuid::nil(),
-            topic_id: Uuid::nil(),
+            id: Id::gen(),
+            sender_id: Id::nil(),
+            topic_id: Id::nil(),
             replies_to_id: None,
             content: String::new(),
             attachments: Vec::new(),
@@ -71,8 +71,8 @@ impl Default for DirectTopicMessage {
 impl DirectTopicMessage {
 
     pub fn new(
-        sender_id: Uuid,
-        topic_id: Uuid,
+        sender_id: Id,
+        topic_id: Id,
         content: String) -> GenericMessageBuilder {
         let msg = GenericMessageBuilder {
             sender_id: Some(sender_id),
@@ -85,13 +85,13 @@ impl DirectTopicMessage {
 
     pub async fn new_thread(
         db: &PgPool,
-        sender_id: Uuid,
-        topic_id: Uuid,
+        sender_id: Id,
+        topic_id: Id,
         content: String) -> anyhow::Result<DirectTopicMessage>
     {
         GenericMessageBuilder {
             sender_id: Some(sender_id),
-            recipient_id: Some(topic_id),
+            recipient_id: Some(topic_id.clone()),
             content: Some(content),
             ..Default::default()
         }.send_to_topic(db, topic_id).await
@@ -99,13 +99,13 @@ impl DirectTopicMessage {
 
     pub async fn reply_to(
         db: &PgPool,
-        target_id: Uuid,
-        sender_id: Uuid,
-        topic_id: Uuid,
+        target_id: Id,
+        sender_id: Id,
+        topic_id: Id,
         content: String ) -> anyhow::Result<Self>
     {
         let rs = Self {
-            id: Uuid::new_v4(),
+            id: Id::gen(),
             sender_id, topic_id, content,
             replies_to_id: Some(target_id),
             ..Default::default()
@@ -122,17 +122,17 @@ impl DirectTopicMessage {
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
             ")
-            .bind(self.id)
-            .bind(self.sender_id)
-            .bind(self.topic_id)
-            .bind(self.replies_to_id)
+            .bind(&self.id)
+            .bind(&self.sender_id)
+            .bind(&self.topic_id)
+            .bind(&self.replies_to_id)
             .bind(self.content.as_str())
             .bind(&self.attachments)
             .fetch_one(db).await?;
         Ok(res)
 
     }
-    pub async fn get_all_topic(db: &PgPool, topic_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_all_topic(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_topic_messages
             WHERE topic_id = $1
@@ -158,7 +158,7 @@ impl DirectTopicMessage {
         Ok(msg)
     }
     pub async fn get_all_topic_thread_starters(
-        db: &PgPool, id: Uuid) -> sqlx::Result<Vec<Self>> {
+        db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_topic_messages
             WHERE replies_to_id IS NULL
@@ -170,7 +170,7 @@ impl DirectTopicMessage {
     }
 
     pub async fn get_all_topic_replies(
-        db: &PgPool, id: Uuid) -> sqlx::Result<Vec<Self>> {
+        db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_topic_messages
             WHERE replies_to_id IS NULL
@@ -180,7 +180,7 @@ impl DirectTopicMessage {
             .fetch_all(db).await?;
         Ok(msg)
     }
-    pub async fn sent_to_topic_id(db: &PgPool, topic_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn sent_to_topic_id(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_topic_messages
             WHERE recipient_id = $1
@@ -190,7 +190,7 @@ impl DirectTopicMessage {
         Ok(msg)
     }
 
-    pub async fn sent_by_sender_id(db: &PgPool, user_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn sent_by_sender_id(db: &PgPool, user_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_topic_messages
             WHERE sender_id = $1
@@ -200,7 +200,7 @@ impl DirectTopicMessage {
         Ok(msg)
     }
 
-    pub async fn all_from_sender_to_topic(db: &PgPool, user_id: Uuid, topic_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn all_from_sender_to_topic(db: &PgPool, user_id: Id, topic_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_topic_messages
             WHERE sender_id = $1, topic_id = $2
@@ -211,7 +211,7 @@ impl DirectTopicMessage {
         Ok(msg)
     }
 
-    pub async fn get_replies_to_dm(db: &PgPool, direct_topic_message_id: Uuid) -> sqlx::Result<Vec<Self>> {
+    pub async fn get_replies_to_dm(db: &PgPool, direct_topic_message_id: Id) -> sqlx::Result<Vec<Self>> {
         let msg = sqlx::query_as::<Postgres, Self>("
             SELECT * FROM direct_topic_messages
             WHERE replies_to_id = $1
@@ -221,8 +221,8 @@ impl DirectTopicMessage {
         Ok(msg)
     }
 
-    pub async fn get_thread_starters(db: &PgPool, user_id: Option<Uuid>, topic_id: Option<Uuid>) -> sqlx::Result<Vec<Self>> {
-        let msgs = match (user_id, topic_id) {
+    pub async fn get_thread_starters(db: &PgPool, user_id: Option<Id>, topic_id: Option<Id>) -> sqlx::Result<Vec<Self>> {
+        let msgs = match (&user_id, &topic_id) {
             (Some(user_id), Some(topic_id)) => sqlx::query_as::<Postgres, Self>("
                 SELECT * FROM direct_topic_messages
                 WHERE replies_to_id = null

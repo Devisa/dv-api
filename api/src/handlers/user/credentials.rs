@@ -1,7 +1,9 @@
-use uuid::Uuid;
-use api_common::models::Model;
-use crate::{db::Db, util::respond, auth::jwt};
-use api_common::models::{Session, credentials::Credentials, verification::VerificationRequest};
+use api_db::{Model, Db, Id};
+use crate::util::respond;
+use api_common::{
+    auth::jwt,
+    models::{Session, credentials::Credentials}
+};
 use actix_web::{Responder, HttpRequest, HttpResponse, HttpResponseBuilder, get, http::StatusCode, post, web::{self, ServiceConfig, Path, Json, Data}};
 
 pub fn routes(cfg: &mut ServiceConfig) {
@@ -34,19 +36,19 @@ pub async fn new_credentials(db: Data<Db>, creds: Json<Credentials>) -> impl Res
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Credentials::get(&db.pool, id.into_inner()).await {
         Ok(c) => respond::ok(c),
         Err(e) => respond::err(e),
     }
 }
-pub async fn get_by_user_id(db: Data<Db>, user_id: Path<Uuid>) -> impl Responder {
+pub async fn get_by_user_id(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     match Credentials::get(&db.pool, user_id.into_inner()).await {
         Ok(c) => respond::ok(c),
         Err(e) => respond::err(e),
     }
 }
-pub async fn delete_by_id(db: Data<Db>, id: Path<Uuid>) -> impl Responder {
+pub async fn delete_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
     match Credentials::delete(&db.pool, id.into_inner()).await {
         Ok(c) => respond::ok(c),
         Err(e) => respond::err(e),

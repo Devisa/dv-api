@@ -2,7 +2,7 @@
 use super::{User, link::UserRelation};
 use actix::prelude::*;
 use chrono::NaiveDateTime;
-use crate::types::{now, Role, Status, private, };
+use crate::types::{now, Role, Id, Status, private, };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
