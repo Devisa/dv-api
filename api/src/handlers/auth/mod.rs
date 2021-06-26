@@ -2,9 +2,7 @@ pub mod credentials;
 
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-use crate::{
-    db::Db, auth::jwt, util::respond,
-};
+use crate::{auth::jwt, context::ApiSession, db::Db, util::respond};
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post,
     web::{self, ServiceConfig, Json, Data, Form, Path},
@@ -14,6 +12,11 @@ use api_common::models::{Model, Profile, account::AccountProvider, auth::Credent
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
+        .service(web::resource("/sess")
+            .route(web::get().to(get_apisessions))
+            .route(web::post().to(new_apisession))
+            .route(web::delete().to(del_apisession))
+        )
         .service(web::resource("/jwt")
             .route(web::get().to(get_jwt))
             .route(web::post().to(refresh_jwt))
@@ -27,6 +30,9 @@ pub fn routes(cfg: &mut ServiceConfig) {
         .service(web::scope("/check")
             .route("", web::get().to(check_auth))
         )
+        .service(web::scope("/token")
+            .route("", web::get().to(get_session_token))
+            )
         .service(web::scope("/creds").configure(credentials::routes))
         .service(web::scope("/signup")
             .route("", web::post().to(signup_full))
@@ -49,7 +55,7 @@ pub async fn refresh_jwt(req: HttpRequest) -> impl Responder {
 }
 
 
-pub async fn check_auth(req: HttpRequest, ) -> actix_web::Result<HttpResponse> {
+pub async fn check_auth(req: HttpRequest, sess: Data<ApiSession>) -> actix_web::Result<HttpResponse> {
     if let Some(token) = req.cookie("dvsa-auth") {
         println!("{}", token.value());
         match jwt::decode_token(token.value()) {
@@ -81,12 +87,13 @@ pub async fn get_jwt_user(db: Data<Db>, req: HttpRequest, ) -> actix_web::Result
 }
 
 /// POST /auth/logout : Endpoint to initiate entire end-to-end logout process
-pub async fn logout(db: Data<Db>, req: HttpRequest) -> impl Responder {
+pub async fn logout(db: Data<Db>, sess: Data<ApiSession>, req: HttpRequest) -> impl Responder {
     let mut resp = HttpResponse::Ok();
     if let Some(token) = req.cookie("dvsa-auth") {
         if token.value() == "" {
             return resp.body("No user to log out");
         } else {
+
             resp.del_cookie(&token);
         }
         // TODO: Delete session associated with token
@@ -190,7 +197,7 @@ pub async fn signup_profile(
 }
 
 
-pub async fn get_session_token(req: HttpRequest) -> Option<String> {
+pub async fn get_session_token(req: HttpRequest, sess: Data<ApiSession>) -> Option<String> {
      req.headers()
          .get("next-auth.session-token")
          .map(|hv| hv.to_str()
@@ -198,4 +205,16 @@ pub async fn get_session_token(req: HttpRequest) -> Option<String> {
              .ok()
          )
          .unwrap_or(None)
+}
+
+pub async fn get_apisessions(sess: Data<ApiSession>) -> impl Responder {
+
+    "".to_string()
+}
+pub async fn new_apisession(sess: Data<ApiSession>) -> impl Responder {
+
+    "".to_string()
+}
+pub async fn del_apisession(sess: Data<ApiSession>) -> impl Responder {
+    "".to_string()
 }

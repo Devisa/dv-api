@@ -1,3 +1,5 @@
+pub mod id;
+
 use uuid::Uuid;
 use chrono::{Duration, NaiveDateTime, Utc};
 use crate::models::{record::Record, user::{UserIn, User}};

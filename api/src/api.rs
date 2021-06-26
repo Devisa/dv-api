@@ -1,8 +1,4 @@
-use crate::{
-    middleware::cors::builder::Cors,
-    context::{ApiConfig, Context},
-    handlers,
-};
+use crate::{context::{ApiConfig, ApiSession, Context}, handlers, middleware::cors::builder::Cors};
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, get, web,
     middleware::{
@@ -37,7 +33,6 @@ impl Api {
             .expect("Could not initialize tracing subscriber"); */
 
         let _guard = super::metrics::sentry::sentry_opts();
-
         let enable_redis = std::env::var("NORMALIZE_PATH").is_ok();
         let server = HttpServer::new(move || {
             App::new()
@@ -48,6 +43,7 @@ impl Api {
                 .wrap(NormalizePath::default())
                 .wrap(Logger::new("\n%r\nSTATUS %s (%Dms, %bb)\nFrom %a to %U\nUser Agent: %{User-Agent}i\nReferrer: %{Referer}i"))
                 .service(health)
+                .data(ApiSession::default())
                 .data(self.ctx.db.clone())
                 .data(self.ctx.redis.clone())
                 .configure(handlers::routes)

@@ -1,4 +1,6 @@
 use actix_web::http::header::ContentType;
+use std::sync::Arc;
+use crate::context::ApiSession;
 use anyhow::Context;
 use api_common::auth::jwt;
 use api_common::auth::jwt::Role;
@@ -108,14 +110,16 @@ pub async fn login_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsI
                 .insert(&db.pool).await {
                 Ok(sess) => {
                     let j = jwt.clone();
+                    let mut jwt_cookie = "dvsa-auth=".to_string();
+                    jwt_cookie.extend(jwt.chars());
                     return HttpResponse::Accepted()
                         .content_type(header::ContentType::json())
-                        .insert_header(("dvsa-cred-auth",HeaderValue::from_static("jwt here")))
+                        .insert_header(("dvsa-cred-auth",jwt.as_str()))
                         .cookie(
                             Cookie::build("dvsa-cred-auth", &jwt.to_string())
                                 .path("/")
                                 .secure(true)
-                                .expires(OffsetDateTime::now())
+                                .expires(OffsetDateTime::now_utc() + Duration::hours(48))
                                 .domain("https://api.devisa.io")
                                 .max_age(time::Duration::hours(48))
                                 .http_only(false)
@@ -123,7 +127,7 @@ pub async fn login_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsI
                                 .finish()
                             )
                         .insert_header(("x-session-token", jwt.as_str()))
-                        .insert_header(("set-cookie", jwt.as_str()))
+                        .insert_header(("set-cookie", jwt_cookie.as_str()))
                         .json(creds);
                 },
                 Err(e) => {
@@ -142,8 +146,22 @@ pub async fn login_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsI
     }
 }
 
-pub async fn logout_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsIn>) -> impl Responder {
-    "Hello".to_string()
+pub async fn logout_creds(sess: Data<ApiSession>, req: HttpRequest, db: Data<Db>, data: Form<CredentialsIn>) -> impl Responder {
+    let mut _sess: Arc<ApiSession> = sess.into_inner();
+    let cookies = req.cookies().expect("Couild not load cookeis");
+    if let Some(c) = req.cookie("dvsa-auth"){
+        let resp = HttpResponse::Ok()
+            .del_cookie(&c);
+        if let Some(mut sess_cookie) = req.cookie("dvsa-cred-auth") {
+            sess_cookie.make_removal();
+            tracing::info!("Logged out user successfully -- removed dvsa-auth and dvsa-cred-auth cookies for {}", data.username);
+            return HttpResponse::Ok()
+                .del_cookie(&sess_cookie)
+                .body("Successfully logged out")
+        }
+        return HttpResponse::Ok().body("User has dvsa-auth, but not dvsa-cred-auth cookies.")
+    }
+    HttpResponse::NotFound().body("No logged in user to log out")
 }
 
 pub async fn index(db: Data<Db>) -> impl Responder {
