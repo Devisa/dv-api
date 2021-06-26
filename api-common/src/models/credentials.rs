@@ -3,11 +3,12 @@ use pwhash::bcrypt::{BcryptSetup, BcryptVariant, self};
 use serde::{Serialize, Deserialize};
 use sqlx::{FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}, postgres::PgPool};
 use uuid::Uuid;
+use crate::types::id::Id;
 
 #[derive(PartialOrd,  Eq, Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Credentials {
-    #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
+    #[serde(default = "Id::gen")]
+    pub id: Id,
     #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
     pub user_id: Uuid,
     pub username: String,

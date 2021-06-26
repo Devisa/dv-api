@@ -1,4 +1,5 @@
 pub mod id;
+pub mod token;
 
 use uuid::Uuid;
 use chrono::{Duration, NaiveDateTime, Utc};
@@ -15,6 +16,7 @@ pub struct LinkId(Option<Uuid>);
 pub struct UserId(uuid::Uuid);
 
 impl Default for UserId {
+
     fn default() -> Self {
         Self(Uuid::new_v4())
     }

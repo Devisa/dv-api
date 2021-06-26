@@ -118,7 +118,7 @@ optional = false
 features = [
   "postgres", "runtime-actix-rustls",
   "macros", "chrono",
-  "json", "migrate", "uuid"
+  "json", "migrate", "uuid", "bit-vec", "ipnetwork"
 ]
 
 [dependencies.tracing-subscriber]

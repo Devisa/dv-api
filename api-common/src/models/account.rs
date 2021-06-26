@@ -1,5 +1,5 @@
 use crate::{
-    types::{Status, now, private}
+    types::{id::Id, Status, now, private}
 };
 use api_db::Model;
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
@@ -76,7 +76,7 @@ impl AccountProvider {
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Account {
     #[serde(default = "Uuid::new_v4")]
-    pub id: Uuid,
+    pub id: Id,
     #[serde(default = "Uuid::nil", skip_serializing_if="Uuid::is_nil")]
     pub user_id: Uuid,
     #[serde(default = "AccountProvider::devisa_creds_provider_id")]

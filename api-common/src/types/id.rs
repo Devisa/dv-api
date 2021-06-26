@@ -1,7 +1,7 @@
-use derive_more::{From, Display, FromStr, Error};
+use derive_more::{From, Display, AsMut, AsRef, FromStr, Error};
 use uuid::Uuid;
 
-#[derive(sqlx::Type, Debug, Clone,  Display)]
+#[derive(sqlx::Type, Debug, Clone, Display, AsRef, AsMut)]
 #[sqlx(transparent, type_name = "id")]
 pub struct Id(String);
 
@@ -9,6 +9,10 @@ impl Id {
 
     pub fn gen() -> Self {
         Self(Uuid::new_v4().to_string())
+    }
+
+    pub fn nil() -> Self {
+        Self(Uuid::nil().to_string())
     }
 
 }
@@ -22,5 +26,11 @@ impl From<String> for Id {
             .unwrap_or(Uuid::nil())
             .to_string()
         )
+    }
+}
+
+impl From<Uuid> for Id {
+    fn from(guid: Uuid) -> Self {
+        Self(guid.to_string())
     }
 }
