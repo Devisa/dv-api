@@ -34,6 +34,8 @@ impl Api {
 
         let _guard = super::metrics::sentry::sentry_opts();
         let enable_redis = std::env::var("NORMALIZE_PATH").is_ok();
+        let port = self.ctx.config.port;
+        log::debug!("Running server on port {}", &port);
         let server = HttpServer::new(move || {
             App::new()
                 // .wrap(Cors::permissive())
@@ -47,11 +49,8 @@ impl Api {
                 .data(self.ctx.db.clone())
                 .data(self.ctx.redis.clone())
                 .configure(handlers::routes)
-        });
-        // let port = self.clone().ctx.config.port;
-        let port: u16 = 1888;
-        log::debug!("Running server on port {}", &port);
-        server.bind(format!("0.0.0.0:{}", &port))?
+        })
+            .bind(format!("0.0.0.0:{}", &port))?
             .run().await?;
         Ok(())
     }

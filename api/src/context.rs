@@ -98,16 +98,14 @@ impl ApiConfig {
     }
 
     pub fn default() -> anyhow::Result<Self> {
-        let db_url = if let Ok(env) = std::env::var("ENV") {
-            match env.as_str() {
-                "PROD" => { log::info!("ENV: PROD"); std::env::var("DATABASE_URL")? },
-                "DEV" => { log::info!("ENV: DEV"); dotenv::var("DATABASE_URL")? } ,
-                _ => panic!("Unknown ENV var")
-            }
-        } else { dotenv::var("DATABASE_URL")? };
+        let db_url = if let Ok(db) = std::env::var("DATABASE_URL") { db
+        } else if let Ok(db) = dotenv::var("DATABASE_URL") { db
+        } else { panic!("No database url set") };
+
         let port = if let Ok(port) = std::env::var("PORT") { port
         } else if let Ok(port) = dotenv::var("PORT") { port
         } else { "1888".to_string() };
+
         let port: u16 = port.parse()?;
         let redis_url: String = "redis://127.0.0.1".into();
         let host: String = "0.0.0.0".into();
