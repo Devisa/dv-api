@@ -4,14 +4,14 @@ stages:
 
 rust-latest:
   stage: build
-  image: rustlang/rust:latest
+  image: rust:latest
   script:
     - echo "helo"
     - cargo build --package di-api --verbose
     # - cargo build --verbose --release
   allow_failure: true
   artifacts:
-    name: api-bin
+    name: di-api
     paths:
       - target/debug/di-api
       # - target/releas
