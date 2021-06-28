@@ -12,20 +12,23 @@ use actix_web::{
     cookie::Cookie,
     web::{self, ServiceConfig, Json, Data, Form, Path}
 };
-use api_common::{auth::jwt::{self, Role}, models::{
+use api_common::{
+    models::{
         Profile, Session,
         auth::CredentialsSignupIn,
         Account,
         credentials::{CredentialsIn, Credentials},
         user::{User, UserIn}
-    }, types::{AccessToken, Gender, token::Token}};
+    },
+    types::{AccessToken, Gender, token::Token}
+};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
         .service(web::resource("").route(web::to(index)))
-        .service(web::resource("/signup").route(web::get().to(signup_creds)))
-        .service(web::resource("/login").route(web::get().to(login_creds)))
-        .service(web::resource("/logout").route(web::get().to(logout_creds)));
+        .service(web::resource("/signup").route(web::post().to(signup_creds)))
+        .service(web::resource("/login").route(web::post().to(login_creds)))
+        .service(web::resource("/logout").route(web::post().to(logout_creds)));
 
 }
 
@@ -146,12 +149,11 @@ pub async fn login_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsI
     }
 }
 
+// TODO handle logout in in-memory session object
 pub async fn logout_creds(sess: Data<ApiSession>, req: HttpRequest, db: Data<Db>, data: Form<CredentialsIn>) -> impl Responder {
     let mut _sess: Arc<ApiSession> = sess.into_inner();
     let cookies = req.cookies().expect("Couild not load cookeis");
     if let Some(c) = req.cookie("dvsa-auth"){
-        let resp = HttpResponse::Ok()
-            .del_cookie(&c);
         if let Some(mut sess_cookie) = req.cookie("dvsa-cred-auth") {
             sess_cookie.make_removal();
             tracing::info!("Logged out user successfully -- removed dvsa-auth and dvsa-cred-auth cookies for {}", data.username);
@@ -159,7 +161,7 @@ pub async fn logout_creds(sess: Data<ApiSession>, req: HttpRequest, db: Data<Db>
                 .del_cookie(&sess_cookie)
                 .body("Successfully logged out")
         }
-        return HttpResponse::Ok().body("User has dvsa-auth, but not dvsa-cred-auth cookies.")
+        return HttpResponse::Ok().body("User has dvsa-auth, but not dvsa-cred-auth cookies. No user to log out")
     }
     HttpResponse::NotFound().body("No logged in user to log out")
 }

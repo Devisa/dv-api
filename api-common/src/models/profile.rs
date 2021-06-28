@@ -1,4 +1,5 @@
-use crate::types::*;
+use crate::types::{Gender, Role, now, GroupRole};
+use api_db::{Db, Id};
 use chrono::NaiveDate;
 use url::Url;
 use super::Model;
@@ -17,6 +18,8 @@ pub struct Profile {
     pub user_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bio: Option<String>,
+    #[serde(default = "Role::default")]
+    pub role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cover_image: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -38,9 +41,17 @@ pub struct Profile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occupation: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub facebook_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub linkedin_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twitter_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub education: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gender: Option<Gender>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub birthday: Option<NaiveDate>,
+    pub birthday: Option<NaiveDateTime>,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
     #[serde(default = "now")]
@@ -54,10 +65,31 @@ impl Model for Profile {
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
-           INSERT INTO profiles (id, user_id, bio, birthday, gender,
-           country, city, website, referral, company, occupation,
-           cover_image, postal_code, state, phone_number)
-           VALUES ($1 ,$2 ,$3 ,$4 ,$5 ,$6 ,$7 ,$8 ,$9 ,$10 ,$11 ,$12 ,$13 ,$14)
+           INSERT INTO profiles (
+            id,
+            user_id,
+            bio,
+            birthday,
+            gender,
+            country,
+            city,
+            state,
+            website,
+            referral,
+            company,
+            occupation,
+            twiter_url,
+            facebook_url,
+            education,
+            linkedin_url,
+            cover_image,
+            postal_code,
+            phone_number
+            )
+           VALUES (
+           $1 ,$2 ,$3 ,$4 ,$5 ,$6 ,
+           $7 ,$8 ,$9 ,$10 ,$11 ,$12 ,
+           $13 ,$14, $15, $16, $17, $18, $19)
            RETURNING *
            ")
             .bind(&self.id)
@@ -67,13 +99,17 @@ impl Model for Profile {
             .bind(&self.gender)
             .bind(&self.country)
             .bind(&self.city)
+            .bind(&self.state)
             .bind(&self.website)
             .bind(&self.referral)
             .bind(&self.company)
             .bind(&self.occupation)
+            .bind(&self.twitter_url)
+            .bind(&self.facebook_url)
+            .bind(&self.education)
+            .bind(&self.linkedin_url)
             .bind(&self.cover_image)
             .bind(&self.postal_code)
-            .bind(&self.state)
             .bind(&self.phone_number)
             .fetch_one(db).await?;
         Ok(self)
@@ -88,7 +124,12 @@ impl Default for Profile {
             bio: None,
             cover_image: None,
             birthday: None,
+            linkedin_url: None,
+            facebook_url: None,
+            education: None,
+            twitter_url: None,
             city: None,
+            role: Role::User,
             country: None,
             company: None,
             occupation: None,

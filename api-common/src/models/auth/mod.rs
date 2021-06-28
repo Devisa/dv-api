@@ -1,6 +1,6 @@
 use sqlx::{
     postgres::{Postgres, PgPool},
-    types::chrono::NaiveDate,
+    types::chrono::NaiveDateTime,
 };
 use api_db::types::{Id, Model};
 use crate::types::{now, AccessToken, SessionToken, RefreshToken};
@@ -30,7 +30,7 @@ pub struct CredentialsSignupIn {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub birthday: Option<NaiveDate>,
+    pub birthday: Option<NaiveDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bio: Option<String>
 }

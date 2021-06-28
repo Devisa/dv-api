@@ -31,6 +31,7 @@ pub fn routes(cfg: &mut ServiceConfig) {
         )
         .service(web::scope("/check")
             .route("", web::get().to(check_auth))
+            .route("", web::post().to(check_token))
         )
         .service(web::scope("/token")
             .route("", web::get().to(get_session_token))
@@ -59,7 +60,7 @@ pub async fn refresh_jwt(req: HttpRequest) -> impl Responder {
 
 pub async fn check_auth(req: HttpRequest, sess: Data<ApiSession>) -> actix_web::Result<HttpResponse> {
     if let Some(token) = req.cookie("dvsa-auth") {
-        println!("{}", token.value());
+        tracing::info!("{}", token.value());
         match jwt::decode_token(token.value()) {
             Ok(claims) => Ok(respond::ok(claims)),
             Err(e) => Ok(HttpResponse::Unauthorized().body(&format!("Your token is expired or invalid, {}", e))),
@@ -112,21 +113,25 @@ pub async fn logout(db: Data<Db>, sess: Data<ApiSession>, req: HttpRequest) -> i
 ///      fetch User corresponding to credentials. Allow Email and username login.
 ///      Email login: Get { email, password } -> fetch User -> fetch Creds -> check password
 ///      Username login: Get { username, password } -> fetch Creds -> check password -> fetch User
-pub async fn login(db: Data<Db>, creds: Json<CredentialsIn>) -> impl Responder {
-    let creds = creds.into_inner();
-    match Credentials::verify(&db.pool, &creds.username, &creds.password).await {
+pub async fn login(db: Data<Db>, cr: Json<CredentialsIn>) -> impl Responder {
+    match Credentials::verify(&db.pool, &cr.username, &cr.password).await {
         Ok(creds) => {
-            let user = Credentials::get_user(&db.pool, creds.clone().user_id).await.unwrap();
+            let user = Credentials::get_user(&db.pool, creds.user_id)
+                .await.unwrap();
             let sess = Session::create(user.clone().id, Expiration::two_days())
                 .expect("Could not create session");
             let acct = Account::update_creds_access_token(&db.pool, &user.id, &sess.access_token).await
                 .expect("DB ERROR: Could not insert account")
                 .expect("ERROR: No credentials account with that user ID");
+            let a_tok = sess.clone().access_token.get();
             HttpResponse::Ok()
-                .append_header(("dvsa-auth", sess.clone().access_token.get().as_str()))
-                .cookie(cookie::Cookie::build("dvsa-auth", &sess.clone().access_token.get())
+                .append_header(("dvsa-auth", a_tok.as_str()))
+                .cookie(Cookie::build("dvsa-auth", a_tok.as_str())
                     .same_site(cookie::SameSite::None)
-                    .expires(OffsetDateTime::now_utc() + Duration::hours(sess.expires.hours_left() as i64))
+                    .expires(
+                        OffsetDateTime::now_utc() +
+                        Duration::hours(sess.expires.hours_left() as i64)
+                    )
                     .finish())
                 .json(&user)
         },
