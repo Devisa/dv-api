@@ -4,6 +4,7 @@ pub mod level;
 pub mod link;
 pub mod mail;
 
+use std::borrow::Cow;
 use uuid::Uuid;
 use actix::prelude::*;
 use rand::{distributions::{Uniform, Alphanumeric}, Rng, prelude::Distribution};
@@ -339,6 +340,22 @@ impl Actor for User {
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
         log::info!("USER: {:?} has left the network.", &self.email);
+    }
+}
+
+impl async_graphql::Type for User {
+    fn type_name() -> std::borrow::Cow<'static, str> {
+        Cow::Owned("user".to_string())
+    }
+    fn create_type_info(registry: &mut async_graphql::registry::Registry) -> String {
+        "user".to_string()
+    }
+
+    fn qualified_type_name() -> String {
+        "user".to_string()
+    }
+    fn introspection_type_name(&self) -> std::borrow::Cow<'static, str> {
+        Cow::Owned("user".to_string())
     }
 }
 

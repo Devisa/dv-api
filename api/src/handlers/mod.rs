@@ -51,7 +51,7 @@ pub fn routes(cfg: &mut ServiceConfig) {
         .service(web::scope("/message").configure(message::routes))
         .service(web::scope("/email").configure(email::routes))
         // .service(web::scope("/rt").configure(rt::routes))
-        // .service(web::scope("/gql").configure(gql::routes))
+        .service(web::scope("/graphqlql").configure(graphql::routes))
         .service(web::scope("/topic").configure(topic::routes));
 }
 

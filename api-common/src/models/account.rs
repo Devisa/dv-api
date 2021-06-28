@@ -1,4 +1,4 @@
-use crate::types::{Status, now, private};
+use crate::types::{token::{Token, AccessToken}, Expiration, RefreshToken, Status, now, private};
 use api_db::{Model, Id, Db};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
@@ -25,20 +25,6 @@ pub enum AccountProvider {
     /// id = "twitter" TODO
     Twitter
 }
-
-// TODO make a real access token struct
-#[derive(sqlx::Type, Debug, Clone)]
-#[sqlx(transparent, type_name = "access_token")]
-pub struct AccessToken(String);
-
-impl AccessToken {
-
-    pub fn gen() -> Self {
-
-        AccessToken(Id::gen().to_string())
-    }
-}
-
 impl AccountProvider {
 
     pub fn devisa_creds_provider_id() -> String {
@@ -53,18 +39,16 @@ pub struct Account {
     pub id: Id,
     #[serde(default = "Id::nil")]
     pub user_id: Id,
-    #[serde(default = "AccountProvider::devisa_creds_provider_id")]
     pub provider_type: String,
     #[serde(default = "AccountProvider::devisa_creds_provider_id")]
     pub provider_id: String,
     #[serde(default = "Id::gen")]
     pub provider_account_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub refresh_token: Option<String>,
+    pub refresh_token: Option<RefreshToken>,
+    pub access_token: Option<AccessToken>,
     #[serde(skip_serializing_if="Option::is_none")]
-    pub access_token: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    pub access_token_expires: Option<NaiveDateTime>,
+    pub access_token_expires: Option<Expiration>,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
     #[serde(default = "now")]
@@ -76,7 +60,7 @@ impl Default for Account {
         Account {
             id: Id::gen(),
             user_id: Id::nil(),
-            provider_type: "creds".to_string(),
+            provider_type: "credentials".to_string(),
             provider_id: "dvsa-creds".to_string(),
             provider_account_id: Id::gen(),
             refresh_token: None,
@@ -128,6 +112,42 @@ impl Account {
         Self::default()
     }
 
+    pub async fn get_credentials_account(db: &PgPool, user_id: Id) -> sqlx::Result<Option<Self>> {
+        let res = sqlx::query_as::<Postgres, Self>(
+            "SELECT * FROM accounts WHERE
+                 user_id = $1 AND
+                 provider_type = 'credentials'
+             RETURNING *
+            ")
+            .bind(user_id)
+            .fetch_optional(db)
+            .await?;
+        Ok(res)
+    }
+
+    pub async fn update_creds_access_token(
+        db: &PgPool,
+        user_id: &Id,
+        access_token: &AccessToken
+    ) -> sqlx::Result<Option<Self>> {
+        let res = sqlx::query_as::<Postgres, Self>(
+            "UPDATE accounts
+             SET
+                access_token = $1
+                updated_at = $2
+             WHERE
+                 user_id = $3 AND
+                 provider_type = 'credentials'
+             RETURNING *
+            ")
+            .bind(&access_token)
+            .bind(now())
+            .bind(&user_id)
+            .fetch_optional(db)
+            .await?;
+        Ok(res)
+    }
+
     pub fn new_devisa_creds_account(user_id: Id,creds_id: Id,) -> Account {
         tracing::info!("Creating new account..., user_id {}", &user_id);
         Account {
@@ -165,8 +185,13 @@ impl Account {
     }
     */
 
-    pub fn access_token(self) -> String {
-        self.access_token.unwrap_or_default()
+    pub fn access_token(self) -> Option<AccessToken> {
+        self.access_token
+    }
+
+    /// Performed after creating new session after successful login from account
+    pub fn set_access_token(mut self, at: AccessToken) {
+        self.access_token = Some(at);
     }
 
     pub fn new_google() {

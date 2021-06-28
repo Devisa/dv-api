@@ -12,17 +12,13 @@ use actix_web::{
     cookie::Cookie,
     web::{self, ServiceConfig, Json, Data, Form, Path}
 };
-use api_common::{
-    auth::jwt::{self, Role},
-    models::{
+use api_common::{auth::jwt::{self, Role}, models::{
         Profile, Session,
         auth::CredentialsSignupIn,
         Account,
         credentials::{CredentialsIn, Credentials},
         user::{User, UserIn}
-    },
-    types::Gender
-};
+    }, types::{AccessToken, Gender, token::Token}};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -103,25 +99,24 @@ pub async fn login_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsI
                     respond::err(e)
                 })
                 .unwrap_or_default();
-            let jwt = jwt::encode_token(creds.clone().user_id, session.clone().id, "dvsa-creds".into(), Role::User.to_string(), 48)
+            session.clone().set_access_token()
                 .map_err(|e| {
                     tracing::info!("Err creating JWT: {:?}", e);
                     sentry::capture_error(&e.root_cause());
                     respond::err(e)
                 })
-                .unwrap_or_default();
-            match session.set_access_token(jwt.to_string())
-                .set_session_token(jwt.to_string())
-                .insert(&db.pool).await {
+                .expect("Could not generate access token / Could not set session access token");
+            let access_token = session.clone().access_token;
+            match session.insert(&db.pool).await {
                 Ok(sess) => {
-                    let j = jwt.clone();
+                    let j = sess.access_token.clone();
                     let mut jwt_cookie = "dvsa-auth=".to_string();
-                    jwt_cookie.extend(jwt.chars());
+                    jwt_cookie.extend(j.clone().get().chars());
                     return HttpResponse::Accepted()
                         .content_type(header::ContentType::json())
-                        .insert_header(("dvsa-cred-auth",jwt.as_str()))
+                        .insert_header(("dvsa-cred-auth",j.clone().get().as_str()))
                         .cookie(
-                            Cookie::build("dvsa-cred-auth", &jwt.to_string())
+                            Cookie::build("dvsa-cred-auth", &j.clone().get())
                                 .path("/")
                                 .secure(true)
                                 .expires(OffsetDateTime::now_utc() + Duration::hours(48))
@@ -131,7 +126,7 @@ pub async fn login_creds(req: HttpRequest, db: Data<Db>, data: Form<CredentialsI
                                 .same_site(actix_web::cookie::SameSite::Lax)
                                 .finish()
                             )
-                        .insert_header(("x-session-token", jwt.as_str()))
+                        .insert_header(("x-session-token", j.clone().get().as_str()))
                         .insert_header(("set-cookie", jwt_cookie.as_str()))
                         .json(creds);
                 },

@@ -1,9 +1,8 @@
 use api_db::{Db, Id, Model};
-use api_common::types::now;
+use api_common::types::{Expiration, token::Token, AccessToken, SessionToken, now};
 use actix_http::{StatusCode, header};
 use actix_web::{FromRequest, HttpRequest, HttpResponse, ResponseError, dev::Payload, error::PayloadError, web};
 use api_common::models::Session;
-use api_common::types::Expiration;
 use chrono::NaiveDateTime;
 use futures_util::future::{ok, err, Ready};
 use derive_more::{From, Display, Error};
@@ -16,8 +15,8 @@ pub struct SessionIn {
     pub id: Id,
     #[serde(default = "Id::nil")]
     pub user_id: Id ,
-    pub access_token: String,
-    pub session_token: String,
+    pub access_token: AccessToken,
+    pub session_token: SessionToken,
     #[serde(default = "Expiration::two_days")]
     pub expires: Expiration,
     #[serde(default = "now")]
@@ -31,8 +30,8 @@ impl Default for SessionIn {
         SessionIn {
             id: Id::gen(),
             user_id: Id::nil(),
-            access_token: String::new(),
-            session_token: String::new(),
+            access_token: AccessToken::nil(),
+            session_token: SessionToken::nil(),
             expires: Expiration::two_days(),
             created_at: now(),
             updated_at: now(),
@@ -43,9 +42,9 @@ impl Default for SessionIn {
 impl Into<Session> for SessionIn {
     fn into(self) -> Session {
         Session {
-            access_token: self.access_token.to_string(),
+            access_token: self.clone().access_token,
             user_id: self.clone().user_id,
-            session_token: self.session_token.to_string(),
+            session_token: self.clone().session_token,
             expires: self.clone().expires,
             created_at: self.created_at,
             updated_at: self.updated_at,

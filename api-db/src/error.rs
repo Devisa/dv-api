@@ -10,6 +10,8 @@ pub enum DdbError {
     DatabaseError(sqlx::Error),
 }
 
+pub type DdbResult<T> = Result<T, DdbError>;
+
 impl fmt::Display for DdbError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

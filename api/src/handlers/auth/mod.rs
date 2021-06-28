@@ -1,6 +1,7 @@
 pub mod credentials;
 
 use std::convert::TryFrom;
+use actix_http::header::HeaderValue;
 use time::{Duration, OffsetDateTime};
 use api_db::{Db, Model, Id};
 use crate::{util::respond, context::ApiSession,};
@@ -9,12 +10,7 @@ use actix_web::{
     web::{self, ServiceConfig, Json, Data, Form, Path},
     cookie::{self, Cookie},
 };
-use api_common::{
-    models::{
-        Profile, account::AccountProvider, auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}
-    },
-    auth::jwt,
-};
+use api_common::{auth::jwt, models::{Account, Profile, Session, account::AccountProvider, auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}}, types::{AccessToken, Expiration, token::Token}};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -120,15 +116,17 @@ pub async fn login(db: Data<Db>, creds: Json<CredentialsIn>) -> impl Responder {
     let creds = creds.into_inner();
     match Credentials::verify(&db.pool, &creds.username, &creds.password).await {
         Ok(creds) => {
-            // Create session Session::Create(user_id, ...)
             let user = Credentials::get_user(&db.pool, creds.clone().user_id).await.unwrap();
-            let jwt = jwt::encode_token(creds.user_id, Id::nil(), "dvweb".into(), "user".to_string(), 72).unwrap();
-            let exp = OffsetDateTime::now_utc() + Duration::days(3);
+            let sess = Session::create(user.clone().id, Expiration::two_days())
+                .expect("Could not create session");
+            let acct = Account::update_creds_access_token(&db.pool, &user.id, &sess.access_token).await
+                .expect("DB ERROR: Could not insert account")
+                .expect("ERROR: No credentials account with that user ID");
             HttpResponse::Ok()
-                .append_header(("dvsa-auth", jwt.clone()))
-                .cookie(cookie::Cookie::build("dvsa-auth", &jwt)
+                .append_header(("dvsa-auth", sess.clone().access_token.get().as_str()))
+                .cookie(cookie::Cookie::build("dvsa-auth", &sess.clone().access_token.get())
                     .same_site(cookie::SameSite::None)
-                    .expires(exp)
+                    .expires(OffsetDateTime::now_utc() + Duration::hours(sess.expires.hours_left() as i64))
                     .finish())
                 .json(&user)
         },
@@ -137,8 +135,34 @@ pub async fn login(db: Data<Db>, creds: Json<CredentialsIn>) -> impl Responder {
     }
 }
 
-pub async fn check_jwt(db: Data<Db>, req: HttpRequest) -> impl Responder {
-    String::new()
+// TODO generate a new refresh/session token
+pub async fn check_token(db: Data<Db>, req: HttpRequest) -> impl Responder {
+    match req.cookie("dvsa-auth") {
+        Some(token) => {
+            let token = AccessToken::new(token.to_string());
+            tracing::info!("CHECK_TOKEN: Found cookie access token {}", &token);
+            // let header = req.headers().get("dvsa-auth")
+            // tracing::info!("CHECK_TOKEN: Found header access token {}", ;
+            let decoded = token.clone().decode()
+                .expect("Could not decode JWT");
+            tracing::info!("CHECK_TOKEN: Got decoded user {:?}", &decoded);
+            if token.is_expired()
+            .expect("Could not decode JWT") {
+                HttpResponse::Unauthorized()
+                    .insert_header(("dvsa-auth-valid", false.to_string()))
+                    .json(&decoded)
+            } else {
+                HttpResponse::Ok()
+                    .insert_header(("dvsa-auth-valid", true.to_string()))
+                    .json(&decoded)
+            }
+
+
+        },
+        None => {
+            respond::not_found("No access token found in cookies")
+        }
+    }
 }
 
 /// POST /auth/signup : Endpoint to initiate entire end-to-end signup process

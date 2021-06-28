@@ -1,32 +1,112 @@
-use sqlx::{self, Database, Type, TypeInfo};
-use sqlx::prelude::*;
-use uuid::Uuid;
-use derive_more::{AsRef, AsMut, Display, From};
+use std::convert::{TryFrom, TryInto};
 
-#[derive(sqlx::Type, From, AsRef, AsMut, Display)]
+use chrono::Duration;
+use sqlx::{PgPool, self, Database, Type, TypeInfo};
+use serde::{Serialize, Deserialize};
+use api_db::{Id, Model};
+use crate::auth::jwt::*;
+use crate::{
+    models::{Session, User}
+};
+use derive_more::{AsRef, AsMut, Display, From};
+use super::{Expiration};
+
+
+/// Until a more complex auth system is made,
+/// both tokens will just be the JWT
+///
+#[derive(sqlx::Type, PartialEq, Debug, Clone, Serialize, Deserialize, From, AsRef, AsMut, Display)]
 #[sqlx(transparent, type_name = "session_token")]
 pub struct SessionToken(String);
 
-#[derive(sqlx::Type, From, AsRef, AsMut, Display)]
+#[derive(sqlx::Type, PartialEq,Debug, Clone, Serialize, Deserialize, From, AsRef, AsMut, Display)]
 #[sqlx(transparent, type_name = "access_token")]
 pub struct AccessToken(String);
 
 
-impl SessionToken {
+#[async_trait::async_trait]
+pub trait Token {
 
-    pub fn empty() -> Self {
+    fn new(token: String) -> Self;
+
+    fn nil() -> Self;
+
+}
+
+
+#[async_trait::async_trait]
+impl Token for SessionToken {
+
+    fn new(token: String) -> Self {
+        Self(token)
+    }
+    fn nil() -> Self {
+        Self(String::new())
+    }
+}
+
+#[async_trait::async_trait]
+impl Token for AccessToken {
+
+    fn new(token: String) -> Self {
+        Self(token)
+    }
+    fn nil() -> Self {
         Self(String::new())
     }
 }
 
 impl AccessToken {
 
-    pub fn empty() -> Self {
-        Self(String::new())
+    pub fn user_from_id(user_id: Id, session_id: Id, exp: Expiration) -> anyhow::Result<Self> {
+        let exp = exp.hours_left() as u16;
+        let issuer = String::from("dvsa-creds");
+        let role = "user".to_string();
+        let jwt = encode_token(user_id, session_id, issuer, role, exp)?;
+        Ok(Self(jwt))
+    }
+
+    pub fn new_user(session: &Session) -> anyhow::Result<Self> {
+        let exp = session.expires.hours_left() as u16;
+        let issuer = String::from("dvsa-creds");
+        let role = "user".to_string();
+        let jwt = encode_token(session.clone().user_id, session.id.to_owned(), issuer, role, exp)?;
+        Ok(Self(jwt))
+    }
+
+    pub fn decode(self) -> Result<Claims, jsonwebtoken::errors::Error> {
+        decode_token(self.get().as_str())
+    }
+
+    pub fn encoded_user(self) -> anyhow::Result<EncodedUser> {
+        EncodedUser::try_from(self.decode()?)
+
+    }
+
+    pub fn is_expired(self) -> anyhow::Result<bool> {
+        let claims = self.decode()?;
+        let exp = chrono::NaiveDateTime::from_timestamp(claims.exp, 0);
+        if exp - chrono::Utc::now().naive_utc() < Duration::zero() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+
+    }
+
+    pub fn get(self) -> String {
+        self.0
     }
 }
 
-#[derive(sqlx::Type, From, AsRef, AsMut, Display)]
+// TODO NOTE should have some user/account identifying info?
+impl Default for SessionToken {
+    fn default() -> Self {
+        Self(uuid::Uuid::new_v4().to_string())
+    }
+}
+
+#[derive(sqlx::Type, PartialEq,Debug, Clone, Serialize, Deserialize, From, AsRef, AsMut, Display)]
 #[sqlx(transparent, type_name = "refresh_token")]
 pub struct RefreshToken(String);
 

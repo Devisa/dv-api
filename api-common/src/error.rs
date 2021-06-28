@@ -1,5 +1,7 @@
 use derive_more::Display;
 
+pub type DiResult<T> = Result<T, DiError>;
+
 #[derive(Display, Debug)]
 pub enum DiError {
     ParseUuidError(uuid::Error),

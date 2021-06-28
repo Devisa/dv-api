@@ -1,6 +1,7 @@
 use std::error;
 use std::fmt;
 
+use api_db::DdbError;
 use derive_more::{Error, From, Into, Display};
 use actix_web::{
     error::{ResponseError, JsonPayloadError, QueryPayloadError},
@@ -12,6 +13,15 @@ use serde::ser::{Serialize, Serializer, SerializeStruct};
 #[derive(Debug)]
 pub struct GenericError {
 }
+
+#[derive(Debug, Display, Error, From)]
+pub enum ApiError {
+    SessionError(SessionError),
+    AuthError,
+    DbError(DdbError),
+}
+
+pub type ApiResult<T> = Result<T, ApiError>;
 
 #[derive(Debug, Display, Error, From)]
 pub enum SessionError {

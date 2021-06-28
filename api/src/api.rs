@@ -1,4 +1,9 @@
-use crate::{context::{ApiConfig, ApiSession, Context}, handlers, middleware::cors::builder::Cors};
+use crate::{
+    context::{ApiConfig, ApiSession, Context},
+    handlers::{self, graphql::{SubscriptionRoot, QueryRoot, MySchema}},
+    middleware::cors::builder::Cors};
+use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql::{EmptyMutation, Schema, };
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, get, web,
     middleware::{
@@ -32,13 +37,19 @@ impl Api {
             .try_init()
             .expect("Could not initialize tracing subscriber"); */
 
+        let port = self.ctx.config.port;
+        let schema = Schema::build(QueryRoot, EmptyMutation, SubscriptionRoot)
+            .data(self.ctx.db.pool.clone())
+            // .data(Storage::default())
+            .finish();
+        tracing::info!("GraphQL Playground running on localhost:{}.", &port);
         let _guard = super::metrics::sentry::sentry_opts();
         let enable_redis = std::env::var("NORMALIZE_PATH").is_ok();
-        let port = self.ctx.config.port;
-        log::debug!("Running server on port {}", &port);
+        tracing::debug!("Running server on port {}", &port);
         let server = HttpServer::new(move || {
             App::new()
                 // .wrap(Cors::permissive())
+                // .wrap(schema.clone())
                 .wrap(Condition::new(true, Cors::permissive()))
                 .wrap(Condition::new(true, NormalizePath::default()))
                 .wrap(Compress::default())

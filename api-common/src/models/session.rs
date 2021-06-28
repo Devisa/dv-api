@@ -1,6 +1,6 @@
 use api_db::{Model, Id};
-use actix_web::{guard::Guard, HttpRequest, HttpResponse, Responder};
-use crate::types::{Status, now, private, Expiration};
+use chrono::Duration;
+use crate::types::{token::{AccessToken, SessionToken, Token}, Expiration, Status, now, private};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
 
@@ -12,8 +12,10 @@ pub struct Session {
     pub user_id: Id,
     #[serde(default = "Expiration::two_days")]
     pub expires: Expiration,
-    pub session_token: String,
-    pub access_token: String,
+    #[serde(default = "SessionToken::default")]
+    pub session_token: SessionToken,
+    #[serde(default = "AccessToken::nil")]
+    pub access_token: AccessToken,
     #[serde(default = "now")]
     pub created_at: NaiveDateTime,
     #[serde(default = "now")]
@@ -46,8 +48,8 @@ impl Default for Session {
         Session {
             id: Id::gen(),
             user_id: Id::nil(),
-            session_token: String::new(),
-            access_token: String::new(),
+            session_token: SessionToken::nil(),
+            access_token: AccessToken::nil(),
             expires: Expiration::two_days(),
             created_at: Utc::now().naive_utc(),
             updated_at: Utc::now().naive_utc(),
@@ -63,12 +65,49 @@ impl Session {
         Ok(sess)
     } */
 
-    pub fn set_session_token(self, token: String) -> Self {
-        Self { session_token: token, ..self }
+    pub fn create(
+        user_id: Id,
+        exp: Expiration) -> anyhow::Result<Self>
+    {
+        let id = Id::gen();
+        let access_token = AccessToken::user_from_id(user_id.clone(), id.clone(), exp.clone())?;
+        Ok(Self {
+            id,
+            user_id,
+            access_token,
+            session_token: SessionToken::default(),
+            expires: exp,
+            ..Default::default()
+        })
     }
 
-    pub fn set_access_token(self, token: String) -> Self {
-        Self { access_token: token, ..self }
+    pub async fn remove(self, db: &PgPool) -> sqlx::Result<Self> {
+        let res = sqlx::query_as::<Postgres, Self>("
+            DELETE FROM sessions WHERE id = $1 returning *")
+            .bind(&self.id)
+            .fetch_one(db)
+            .await?;
+        Ok(res)
+
+    }
+    pub async fn is_expired(self, db: &PgPool, access_token: AccessToken) -> sqlx::Result<bool> {
+        if self.expires.get() - Utc::now().naive_utc() < Duration::zero() {
+            self.remove(db).await?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+
+    }
+
+    pub fn set_session_token(self, token: String) -> Self {
+        Self { session_token: SessionToken::default(), ..self }
+    }
+
+    pub fn set_access_token(mut self) -> anyhow::Result<()> {
+        self.access_token = AccessToken::new_user(&self)?;
+
+        Ok(())
     }
 
     pub fn get_access_token() -> Id {

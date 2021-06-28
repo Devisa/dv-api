@@ -16,6 +16,16 @@ pub struct EncodedUser {
     pub role: String,
 }
 
+impl EncodedUser {
+
+    pub fn new_user(uid: Id, sid: Id) -> Self {
+        Self {
+            role: Role::User.to_string(),
+            sid, user_id: uid
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct DecodedToken {
     pub jwt: Option<Claims>,
@@ -54,9 +64,9 @@ impl Claims {
     }
 }
 
-pub struct Token {
-    pub bearer: Option<String>,
-}
+#[derive(sqlx::Type, Debug, Clone)]
+#[sqlx(transparent)]
+pub struct JWT(String);
 
 impl TryFrom<Claims> for EncodedUser {
     type Error = anyhow::Error;
@@ -72,7 +82,7 @@ impl TryFrom<Claims> for EncodedUser {
     }
 }
 
-impl Token {
+impl JWT {
 
     pub fn create(
         user_id: Id,
@@ -80,14 +90,14 @@ impl Token {
         issuer: String,
         role: String,
         duration_hrs: u16,
-    ) -> anyhow::Result<Token> {
+    ) -> anyhow::Result<Self> {
         let claims: Claims = Claims::new(user_id, session_id, issuer, role, duration_hrs);
         let token = encode(
             &Header::default(),
             &claims,
             &get_encoding_key()?,
         )?;
-        Ok(Token { bearer: Some(token) })
+        Ok(Self(token))
     }
 }
 
