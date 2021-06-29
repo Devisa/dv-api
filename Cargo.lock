@@ -765,6 +765,7 @@ dependencies = [
  "actix 0.12.0",
  "actix-broker",
  "actix-http 3.0.0-beta.7",
+ "actix-rt 2.2.0",
  "actix-service 2.0.0",
  "actix-web 4.0.0-beta.7",
  "anyhow",
@@ -791,6 +792,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "tokio 0.2.25",
  "tracing",
  "tracing-appender",
  "tracing-futures",
@@ -815,6 +817,7 @@ dependencies = [
 name = "api-db"
 version = "0.1.0"
 dependencies = [
+ "actix-rt 2.2.0",
  "anyhow",
  "async-trait",
  "derive_more",
@@ -4711,6 +4714,7 @@ dependencies = [
  "mio 0.6.23",
  "mio-named-pipes",
  "mio-uds",
+ "num_cpus",
  "pin-project-lite 0.1.12",
  "signal-hook-registry",
  "slab",

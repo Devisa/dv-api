@@ -38,7 +38,7 @@ pub async fn delete_by_id(req: HttpRequest, db: Data<Db>, profile_id: Path<Id>) 
 }
 #[get("/user/{user_id}")]
 pub async fn get_by_user_id(req: HttpRequest, db: Data<Db>, user_id: Path<Id>) -> impl Responder {
-    match Profile::get_all_by_user_id(&db.pool, user_id.into_inner()).await {
+    match Profile::get_by_user_id(&db.pool, user_id.into_inner()).await {
         Ok(ver) => respond::found(ver),
         Err(e) => respond::err(e),
     }

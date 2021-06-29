@@ -195,10 +195,10 @@ impl Profile {
         Ok(res)
     }
 
-    pub async fn get_all_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Vec<Self>> {
+    pub async fn get_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Profile>("SELECT * FROM profiles WHERE user_id = ?")
             .bind(user_id)
-            .fetch_all(db).await?;
+            .fetch_optional(db).await?;
         Ok(res)
     }
 

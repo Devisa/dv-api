@@ -1,4 +1,5 @@
 pub mod api;
+pub(crate) mod test;
 pub mod data;
 pub mod context;
 pub mod metrics;
@@ -13,6 +14,7 @@ pub mod models;
 
 pub use api_db::db;
 pub use api::Api;
+pub use error::{ApiError, ApiResult};
 
 pub async fn run() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=debug,actix_server=info");

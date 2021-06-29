@@ -2,7 +2,9 @@ use super::User;
 use pwhash::bcrypt::{BcryptSetup, BcryptVariant, self};
 use serde::{Serialize, Deserialize};
 use sqlx::{FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}, postgres::PgPool};
-use api_db::types::id::Id;
+use api_db::types::{Id, Model,};
+use crate::types::{Provider, ProviderType, now, AccessToken, SessionToken, RefreshToken};
+use super::{Profile, Account,};
 
 #[derive(PartialOrd,  Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Credentials {
@@ -124,13 +126,14 @@ impl Credentials {
             .fetch_all(db).await?;
         Ok(creds)
     }
+    */
     pub async fn get_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let creds = sqlx::query_as::<Postgres, Self>("SELECT * FROM credentials WHERE user_id = $1")
             .bind(user_id)
             .fetch_optional(db).await?;
         Ok(creds)
     }
- */
+
     pub async fn delete_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Id>> {
         let creds = sqlx::query_scalar("DELETE FROM credentials WHERE user_id = $1 returning id")
             .bind(user_id)
@@ -165,3 +168,95 @@ impl Credentials {
     }
 
 }
+
+
+/// For handling credentials-based signups in one transaction.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CredentialsSignup {
+    pub username: String,
+    pub password: String,
+    pub name: String,
+    pub email: String,
+}
+
+impl Into<CredentialsIn> for CredentialsSignup {
+    fn into(self) -> CredentialsIn {
+        CredentialsIn {
+            username: self.username,
+            password: self.password,
+        }
+    }
+}
+
+impl Into<User> for CredentialsSignup {
+    fn into(self) -> User {
+        User {
+            name: Some(self.name),
+            email: Some(self.email),
+            ..Default::default()
+        }
+    }
+}
+
+impl CredentialsSignup {
+
+    pub fn new(username: &str, password: &str, name: &str, email: &str, ) -> Self {
+        Self {
+            email: email.into(),
+            name: name.into(),
+            password: password.into(),
+            username: username.into(),
+        }
+    }
+
+    /// A new user, not from another site or linked to an external ID,
+    ///     signing up to the Devisa credentials user pool.
+    ///     Must create: User, Credentials, (Devisa) Account, Profile
+    ///     *In that order* -> VerificationRequest to confirm email
+    ///     -> UserLevel for gamification element
+    pub async fn signup_credentials(self, db: &PgPool) -> sqlx::Result<User> {
+        let user_id: uuid::Uuid = uuid::Uuid::new_v4();
+        let cred_id: uuid::Uuid = uuid::Uuid::new_v4();
+        let user: User = User {
+            id: Id::new(user_id),
+            name: Some(self.name),
+            email: Some(self.email),
+            ..Default::default()
+        }
+            .insert(db).await?;
+        let creds = Credentials {
+            id: Id::new(cred_id),
+            user_id: Id::new(user_id),
+            username: self.username,
+            password: self.password
+        }
+            .hash()
+            .insert(db).await?;
+        let acct: Account = Account::new_devisa_creds_account(
+            Id::new(user_id),
+            Id::new(cred_id),
+        )
+            .insert(db).await?;
+        let profile: Profile = Profile {
+            id: Id::gen(),
+            user_id: Id::new(user_id),
+            ..Default::default()
+        }
+            .insert(db).await?;
+        tracing::info!("NEW SIGNUP: The user has signed up: {:?}\n
+                                    The credentials have signed up: {:?}\n
+                                    The account has signed up: {:?}\n
+                                    The profile hs signed up: {:?}\n",
+                                &user, &creds, &acct, &profile);
+        Ok(user)
+    }
+
+    /// A new user, signing up through Oauth (google, ex.) that is signing
+    ///     up for their mandatory credentials. Upon signup, Next-Auth will
+    ///     automatically handle: User, Account, Verif. , Account,
+    ///     - simply need to create Credentials, Profile, and UserLevel
+    pub async fn signup_oauth(self, db: &PgPool) -> sqlx::Result<()> {
+        Ok(())
+    }
+}
+

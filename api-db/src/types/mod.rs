@@ -1,9 +1,10 @@
 pub mod id;
 
 pub use id::Id;
-use uuid::Uuid;
 use sqlx::{
-    prelude::*, FromRow, Postgres, PgPool, postgres::PgRow,
+    prelude::*, FromRow, Postgres, PgPool,
+    postgres::PgRow,
+    types::chrono::NaiveDateTime,
 };
 
 #[async_trait::async_trait]
@@ -68,6 +69,14 @@ where
         Ok(res)
     }
 
+    async fn get_after(self, db: &PgPool, datetime: NaiveDateTime) -> sqlx::Result<Vec<Self>> {
+        /* let res = sqlx::query_as::<Postgres, Self>(&format!("DELETE FROM {} WHERE {}_id = $1", Self::table(), kind))
+            .bind(id)
+            .fetch_all(db).await?; */
+        Ok(Vec::new())
+    }
+
+
 }
 
 pub async fn get<'r, F: 'r + FromRow<'r, PgRow>>() {
@@ -75,4 +84,12 @@ pub async fn get<'r, F: 'r + FromRow<'r, PgRow>>() {
 }
 /*
 impl<'r> sqlx::FromRow<'r, PgRow> for dyn Model {
+} */
+
+/* pub trait ManyToOne<T: Model>
+where
+    Self: Sized + for<'r> FromRow<'r, PgRow> + Unpin + Send ,
+    T: Sized + for<'r> FromRow<'r, PgRow> + Unpin + Send
+{
+
 } */

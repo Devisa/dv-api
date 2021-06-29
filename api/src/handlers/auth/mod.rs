@@ -1,16 +1,27 @@
 pub mod credentials;
+pub mod api;
+pub mod oauth;
 
 use std::convert::TryFrom;
-use actix_http::header::HeaderValue;
 use time::{Duration, OffsetDateTime};
 use api_db::{Db, Model, Id};
-use crate::{util::respond, context::ApiSession,};
+use crate::{util::respond, models::session::ApiSession,};
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, post,
     web::{self, ServiceConfig, Json, Data, Form, Path},
     cookie::{self, Cookie},
 };
-use api_common::{auth::jwt, models::{Account, Profile, Session, account::AccountProvider, auth::CredentialsSignupIn, credentials::{CredentialsIn, Credentials}, user::{User, UserIn}}, types::{AccessToken, Expiration, token::Token}};
+use api_common::{
+    auth::jwt,
+    models::{Account, Profile, Session,
+        credentials::{CredentialsSignup, CredentialsIn, Credentials},
+        user::{User, UserIn}
+    },
+    types::{
+        AccessToken, Expiration, Provider, ProviderType,
+        token::Token,
+    }
+};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -181,7 +192,7 @@ pub async fn check_token(db: Data<Db>, req: HttpRequest) -> impl Responder {
 pub async fn signup_full(
     db: Data<Db>,
     req: HttpRequest,
-    signup_req: Json<CredentialsSignupIn>,
+    signup_req: Json<CredentialsSignup>,
 ) -> impl Responder {
     match signup_req.into_inner().signup_credentials(&db.pool).await {
         Ok(user) => respond::ok(user),
@@ -252,4 +263,27 @@ pub async fn new_apisession(sess: Data<ApiSession>) -> impl Responder {
 }
 pub async fn del_apisession(sess: Data<ApiSession>) -> impl Responder {
     "".to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ApiResult;
+    use api_common::types::Expiration;
+    use api_db::{Model, Db};
+    use actix_web::{
+        App,
+        test::{TestRequest, self},
+        dev::Server,
+    };
+
+    #[actix_rt::test]
+    async fn check_creds_signup_ok() -> ApiResult<()> {
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn check_expired_token_creds_fail() -> ApiResult<()> {
+        Ok(())
+    }
 }

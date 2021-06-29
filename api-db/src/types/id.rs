@@ -20,6 +20,10 @@ impl Default for Id {
 
 impl Id {
 
+    pub fn new(uid: uuid::Uuid) -> Self {
+        Self(uid.to_string())
+    }
+
     pub fn gen() -> Self {
         Self(Uuid::new_v4().to_string())
     }

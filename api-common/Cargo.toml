@@ -52,6 +52,11 @@ derive_more = "0.99.14"
 # juniper_actix = "*"
 
 
+[dev-dependencies]
+tokio = { version = "*", features = ["full"] }
+actix-rt = "2.2.0"
+
+
 
 
 [dependencies.sqlx]

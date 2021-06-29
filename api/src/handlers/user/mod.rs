@@ -27,21 +27,13 @@ pub fn routes(cfg: &mut ServiceConfig) {
         .service(web::scope("/user").route("", web::get().to(get_all_user_user_links)))
         .service(web::scope("/link").configure(link::routes))
 
-        .service(web::scope("/gen")
-            .route("", web::get().to(gen_user))
-            .route("", web::post().to(insert_gen_user))
-            .service(web::resource("/{gen_no}")
-                .route(web::get().to(gen_n_users))
-                .route(web::post().to(insert_n_gen_users))
-            )
-        )
         .service(web::scope("/{user_id}").configure(individual_user_ops))
         .service(web::resource("")
             .route(web::get().to(get_all))
             .route(web::post().to(new_user))
             .route(web::put().to(generate_fake_users))
         )
-        .service(web::scope("/{user_id}").configure(individual_user_ops))
+        .service(web::scope("/gen").configure(gen_user_routes))
         .service(web::scope("/username/{username}").configure(by_username));
 }
 pub fn individual_user_ops(cfg: &mut ServiceConfig) {
@@ -96,6 +88,15 @@ pub fn individual_user_ops(cfg: &mut ServiceConfig) {
         );
 }
 
+pub fn gen_user_routes(cfg: &mut ServiceConfig) {
+    cfg
+    .route("", web::get().to(gen_user))
+    .route("", web::post().to(insert_gen_user))
+    .service(web::resource("/{gen_no}")
+        .route(web::get().to(gen_n_users))
+        .route(web::post().to(insert_n_gen_users))
+    );
+}
 pub fn by_username(cfg: &mut ServiceConfig) {
     cfg
         .service(web::resource("")
@@ -110,7 +111,7 @@ pub async fn generate_fake_users(req: HttpRequest, db: Data<Db>) -> impl Respond
     "OK".to_string()
 
 }
-pub async fn get_all(req: HttpRequest, db: Data<Db>) -> impl Responder {
+pub async fn get_all(db: Data<Db>) -> impl Responder {
     match User::get_all(&db.pool).await {
         Ok(users) => respond::ok(users),
         Err(e) => respond::err(e),
@@ -320,3 +321,51 @@ pub async fn insert_n_gen_users(db: Data<Db>, num: Path<u8>) -> impl Responder {
 
 //     }
 // }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test::*;
+    use actix_web::{test::{self, TestRequest}, web, };
+
+    #[actix_rt::test]
+    async fn insert_two_non_unique_emails_fails() -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn get_all_users_ok() -> anyhow::Result<()> {
+        let db = db().await?;
+        let u1 = add_user(&db, "user1", "user1@email.com").await?;
+        let u2 = add_user(&db, "user2", "user2@email.com").await?;
+        let u3 = add_user(&db, "user3", "user3@email.com").await?;
+        let v = vec![u1, u2, u3];
+        let req = TestRequest::get().uri("/user");
+        /* let resp = get_all(Data::new(db)).await
+            .respond_to(&req); */
+        // assert!(resp.status().is_ok());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn get_user_by_id_ok() -> anyhow::Result<()> {
+        let db = db().await?;
+        let srv = service("/user/{id}", web::get().to(get_all)).await;
+        /* let add_user = (&db, "user1", "user1@email.com").await?;
+        let req = TestRequest::get().uri("/user/1")
+            .to_http_request(); */
+        /* let resp = req
+            .send_request(&srv).await; */
+        /* let resp = get_by_id(Data::new(db), Path::new(1)).await;
+        assert!(resp.status().is_ok()); */
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn add_user_ok() -> anyhow::Result<()> {
+        let db = db().await?;
+        /* let user = add_user("user1", "user1@email.com").await;
+        let session = User::default().insert(&db.pool).await?; */
+        // let srv = service("/user", web::post().to(new_user)).await;
+        Ok(())
+    }
+}

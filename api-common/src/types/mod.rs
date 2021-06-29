@@ -2,6 +2,7 @@ pub mod time;
 pub mod auth;
 pub mod token;
 
+use derive_more::{FromStr, Display};
 pub use time::Expiration;
 pub use api_db::types::id::Id;
 pub use token::{AccessToken, SessionToken, RefreshToken};
@@ -58,6 +59,43 @@ pub enum Gender {
     Female,
     Other,
     PreferNotToSay,
+}
+
+#[derive(sqlx::Type, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[sqlx(type_name = "provider_type", rename_all = "lowercase")]
+pub enum ProviderType {
+    Email,
+    Credentials,
+    OAuth,
+}
+
+#[derive(sqlx::Type, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[sqlx(type_name = "provider_id", rename_all = "lowercase")]
+pub enum Provider {
+    Devisa,
+    Google,
+    GitHub,
+    GitLab,
+    Facebook,
+    LinkedIn,
+    Twitter
+}
+impl Provider {
+
+    pub fn devisa_creds_provider_id() -> Self {
+        Self::Devisa
+    }
+
+}
+impl Default for Provider {
+    fn default() -> Self {
+        Provider::Devisa
+    }
+}
+impl Default for ProviderType {
+    fn default() -> Self {
+        ProviderType::Credentials
+    }
 }
 
 impl Default for Gender {

@@ -2,36 +2,9 @@ use crate::types::{token::{Token, AccessToken}, Expiration, RefreshToken, Status
 use api_db::{Model, Id, Db};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
-use uuid::Uuid;
+use derive_more::{FromStr, Display};
+pub use crate::types::{ProviderType, Provider};
 
-pub enum ProviderType {
-    Email,
-    Creds,
-    OAuth,
-}
-pub enum AccountProvider {
-    /// id = "credentials"
-    Devisa,
-    /// id = "google"
-    Google,
-    /// id = "github"
-    GitHub,
-    /// id = "gitlab"
-    GitLab,
-    /// id = "facebook"
-    Facebook,
-    /// id = "linkedin"
-    LinkedIn,
-    /// id = "twitter" TODO
-    Twitter
-}
-impl AccountProvider {
-
-    pub fn devisa_creds_provider_id() -> String {
-        "dvsa-creds".to_string()
-    }
-
-}
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Account {
@@ -40,12 +13,13 @@ pub struct Account {
     #[serde(default = "Id::nil")]
     pub user_id: Id,
     pub provider_type: String,
-    #[serde(default = "AccountProvider::devisa_creds_provider_id")]
-    pub provider_id: String,
+    #[serde(default = "Provider::devisa_creds_provider_id")]
+    pub provider_id: Provider,
     #[serde(default = "Id::gen")]
     pub provider_account_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
     pub refresh_token: Option<RefreshToken>,
+    #[serde(skip_serializing_if="Option::is_none")]
     pub access_token: Option<AccessToken>,
     #[serde(skip_serializing_if="Option::is_none")]
     pub access_token_expires: Option<Expiration>,
@@ -61,7 +35,7 @@ impl Default for Account {
             id: Id::gen(),
             user_id: Id::nil(),
             provider_type: "credentials".to_string(),
-            provider_id: "dvsa-creds".to_string(),
+            provider_id: Provider::Devisa,
             provider_account_id: Id::gen(),
             refresh_token: None,
             access_token: None,
@@ -87,8 +61,11 @@ impl Model for Account {
                 provider_account_id,
                 refresh_token,
                 access_token,
-                access_token_expires)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                access_token_expires,
+                created_at,
+                updated_at
+                )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
             ")
             .bind(&self.id)
@@ -99,6 +76,8 @@ impl Model for Account {
             .bind(&self.refresh_token)
             .bind(&self.access_token)
             .bind(&self.access_token_expires)
+            .bind(&self.created_at)
+            .bind(&self.updated_at)
             .fetch_one(db).await?;
         Ok(acct)
 
@@ -148,13 +127,13 @@ impl Account {
         Ok(res)
     }
 
-    pub fn new_devisa_creds_account(user_id: Id,creds_id: Id,) -> Account {
+    pub fn new_devisa_creds_account(user_id: Id, creds_id: Id,) -> Account {
         tracing::info!("Creating new account..., user_id {}", &user_id);
         Account {
             id: Id::gen(),
             user_id,
             provider_type: "credentials".to_string(),
-            provider_id: "dvsa-creds".to_string(),
+            provider_id: Provider::Devisa,
             provider_account_id: creds_id,
             refresh_token: None,
             access_token: None,
@@ -211,6 +190,13 @@ impl Account {
 
     }
 
+    pub async fn get_by_provider_account_id(db: &PgPool, paid: Id) -> anyhow::Result<Option<Self>> {
+        let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts WHERE provider_account_id = $1")
+            .bind(paid)
+            .fetch_optional(db).await?;
+        Ok(acct)
+    }
+
     pub async fn get_all_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Vec<Self>> {
         let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts WHERE user_id = $1")
             .bind(user_id)
@@ -218,9 +204,15 @@ impl Account {
         Ok(acct)
     }
 
-    pub async fn get_all_by_provider_id(db: &PgPool, user_id: Id) -> anyhow::Result<Vec<Self>> {
-        let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts WHERE user_id = $1")
-            .bind(user_id)
+    pub async fn get_all_by_provider_type(db: &PgPool, ptype: &str) -> anyhow::Result<Vec<Self>> {
+        let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts WHERE provider_type = $1")
+            .bind(ptype)
+            .fetch_all(db).await?;
+        Ok(acct)
+    }
+    pub async fn get_all_by_provider_id(db: &PgPool, pid: Id) -> anyhow::Result<Vec<Self>> {
+        let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts WHERE provider_id = $1")
+            .bind(pid)
             .fetch_all(db).await?;
         Ok(acct)
     }
@@ -234,4 +226,6 @@ impl Account {
         Ok(acct)
     }
 }
+
+
 

@@ -17,7 +17,6 @@ pub mod user;
 pub mod automata;
 pub mod condition;
 pub mod action;
-pub mod community;
 pub mod ai;
 
 //use async_graphql_actix_web::ServiceSchema;
@@ -45,7 +44,6 @@ pub fn routes(cfg: &mut ServiceConfig) {
         .service(web::scope("/channel").configure(channel::routes))
         .service(web::scope("/automata").configure(automata::routes))
         .service(web::scope("/action").configure(action::routes))
-        .service(web::scope("/community").configure(community::routes))
         .service(web::scope("/condition").configure(condition::routes))
         .service(web::scope("/ai").configure(ai::routes))
         .service(web::scope("/message").configure(message::routes))

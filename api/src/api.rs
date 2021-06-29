@@ -1,5 +1,6 @@
 use crate::{
-    context::{ApiConfig, ApiSession, Context},
+    models::session::ApiSession,
+    context::{ApiConfig, Context},
     handlers::{self, graphql::{SubscriptionRoot, QueryRoot, MySchema}},
     middleware::cors::builder::Cors};
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
@@ -12,6 +13,7 @@ use actix_web::{
 };
 use api_db::Db;
 use tracing::Level;
+
 
 #[derive(Debug, Clone)]
 pub struct Api {

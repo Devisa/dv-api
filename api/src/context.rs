@@ -1,11 +1,3 @@
-use std::{collections::HashMap,};
-use derive_more::{Display, From, Error};
-use tokio::sync::RwLock;
-use uuid::Uuid;
-use chrono::{Duration, NaiveDateTime};
-use futures_util::lock::Mutex;
-use protobuf::well_known_types::Api;
-use redis::Client;
 use api_db::Db;
 
 #[derive(Debug,Clone )]
@@ -13,72 +5,20 @@ pub struct Context {
     pub db: Db,
     pub config: ApiConfig,
     pub redis: redis::Client,
-    pub session: ApiSession,
 }
 
-#[derive(Debug, Clone, From)]
-pub struct ApiSession {
-    pub users: HashMap<String, SessionInfo>
-}
 
-impl Default for ApiSession {
-    fn default() -> Self {
-        Self {
-            // users: Arc::new(HashMap::new())
-            users: HashMap::new()
-        }
-    }
-}
-
-impl ApiSession {
-
-    pub fn set(input: &str, val: &str) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    pub fn get(input: &str) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    pub fn delete(input: &str) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, From)]
-pub struct SessionInfo {
-    pub user_id: Uuid,
-    pub exp: NaiveDateTime,
-    pub role: String,
-    pub created_at: NaiveDateTime,
-    pub session_token: String,
-    pub access_token: String,
-}
-
-impl Default for SessionInfo {
-    fn default() -> Self {
-        Self {
-            exp: (chrono::Utc::now() + Duration::days(2)).naive_utc(),
-            role: "user".to_string(),
-            user_id: Uuid::nil(),
-            created_at: chrono::Utc::now().naive_utc(),
-            session_token: String::new(),
-            access_token: String::new(),
-        }
-    }
-}
 impl Context {
 
     pub fn with_params(db: Db, config: ApiConfig, redis: redis::Client) -> Self {
-        Self { db, config, redis, session: ApiSession::default() }
+        Self { db, config, redis }
     }
 
     pub async fn new() -> anyhow::Result<Self> {
         let config = ApiConfig::default()?;
         let db = Db::new(&config.db_url).await?;
         let redis = redis::Client::open(config.redis_url.as_str())?;
-        let session = ApiSession::default();
-        Ok(Self { db, config, redis, session })
+        Ok(Self { db, config, redis})
     }
 }
 

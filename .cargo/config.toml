@@ -5,6 +5,8 @@ t = "test --package api"
 c = "check --package api"
 rr = "run --package api"
 
+test = "test -- --nocapture"
+
 
 ra = "run --package api --features actix_x --bin api-actix"
 rw = "run --package api --features warp_x --no-default-features --bin api-warp"

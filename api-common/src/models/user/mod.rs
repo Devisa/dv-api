@@ -5,7 +5,6 @@ pub mod link;
 pub mod mail;
 
 use std::borrow::Cow;
-use uuid::Uuid;
 use actix::prelude::*;
 use rand::{distributions::{Uniform, Alphanumeric}, Rng, prelude::Distribution};
 use fake::{Dummy, Fake, Faker, faker};
@@ -106,7 +105,7 @@ impl UserIn {
 }
 
 #[async_trait::async_trait]
-impl super::Model for User {
+impl Model for User {
     fn table() -> String { String::from("users") }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
@@ -359,3 +358,61 @@ impl async_graphql::Type for User {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use api_db::{Db, Model};
+    use super::*;
+
+    fn user(name: &str, email: &str, image: Option<&str>) -> User {
+        User {
+            name: Some(name.to_string()),
+            email: Some(email.to_string()),
+            image: image.map(|s| s.to_string()),
+            ..Default::default()
+        }
+    }
+
+    async fn db() -> anyhow::Result<Db> {
+        Db::new(&dotenv::var("DATABASE_URL").unwrap()).await
+    }
+
+    // NOTE this function can/should be generalized among any models
+    //      using type params
+    #[actix::test]
+    async fn inserts_retrieves_user_ok() -> sqlx::Result<()> {
+        let db = db().await.unwrap();
+        let user_in: User = user("user1", "user1@email.com", None);
+        let user_in_insert = user_in.clone().insert(&db.pool).await?;
+        let user_out = sqlx::query_as::<Postgres, User>("SELECT * FROM users WHERE id=$1")
+            .bind(user_in.clone().id)
+            .fetch_one(&db.pool)
+            .await?;
+        assert_eq!(user_in, user_out);
+        let user_out_delete = User::delete(&db.pool, user_out.id)
+            .await.unwrap();
+        assert!(user_out_delete.is_some());
+        assert_eq!(Some(user_in_insert), user_out_delete);
+        Ok(())
+    }
+
+    // NOTE this function can/should be generalized among any models
+    #[actix::test]
+    async fn inserts_many_ok() -> sqlx::Result<()> {
+        let db = db().await.unwrap();
+        let u1: User = user("user1", "user1@email.com", None)
+            .insert(&db.pool).await?;
+        let u2: User = user("user2", "user2@email.com", None)
+            .insert(&db.pool).await?;
+        let u3: User = user("user3", "user3@email.com", None)
+            .insert(&db.pool).await?;
+        let users: Vec<User> = User::get_all(&db.pool).await?;
+        assert_eq!(users[0], u1);
+        assert_eq!(users[1], u2);
+        assert_eq!(users[2], u3);
+        User::delete_all(&db.pool).await?;
+        Ok(())
+
+    }
+
+}

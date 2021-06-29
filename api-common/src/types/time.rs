@@ -6,6 +6,12 @@ use serde::{Serialize, Deserialize};
 #[sqlx(transparent, type_name = "expiration")]
 pub struct Expiration(chrono::NaiveDateTime);
 
+impl Default for Expiration {
+    fn default() -> Self {
+        Self::two_days()
+    }
+}
+
 impl Expiration {
 
     pub fn two_days() -> Self {
@@ -40,4 +46,12 @@ impl Expiration {
     pub fn get(&self) -> NaiveDateTime {
         self.0
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ExpirationQuery {
+    pub weeks: Option<u16>,
+    pub days: Option<u16>,
+    pub hours: Option<u16>,
+    pub mins: Option<u16>,
 }
