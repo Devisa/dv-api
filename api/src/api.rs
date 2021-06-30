@@ -46,7 +46,7 @@ impl Api {
             .finish();
         tracing::info!("GraphQL Playground running on localhost:{}.", &port);
         let _guard = super::metrics::sentry::sentry_opts();
-        let enable_redis = std::env::var("NORMALIZE_PATH").is_ok();
+        let enable_redis = std::env::var("ENABLE_REDIS").is_ok();
         tracing::debug!("Running server on port {}", &port);
         let server = HttpServer::new(move || {
             App::new()

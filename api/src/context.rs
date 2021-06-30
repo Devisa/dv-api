@@ -1,3 +1,10 @@
+//! /context.rs
+//! - For initializing API initialization and configuration
+//! - For Initializing and updating dynamic context
+//! ```
+//! use di_api::context::{Context, ApiConfig};
+//! ```
+
 use api_db::Db;
 
 #[derive(Debug,Clone )]

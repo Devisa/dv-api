@@ -1,5 +1,5 @@
 use crate::{db::Db, util::respond, auth::jwt};
-use api_common::models::{post::Post, Session, credentials::Credentials, verification::VerificationRequest};
+use api_common::models::{post::Post, Session, user::{credentials::Credentials, verification::VerificationRequest}};
 use sqlx::{prelude::*, postgres::Postgres};
 use actix_web::{Responder, HttpRequest, HttpResponse, HttpResponseBuilder, get, http::StatusCode, post, web::{self, ServiceConfig}};
 

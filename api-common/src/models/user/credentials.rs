@@ -3,7 +3,7 @@ use pwhash::bcrypt::{BcryptSetup, BcryptVariant, self};
 use serde::{Serialize, Deserialize};
 use sqlx::{FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}, postgres::PgPool};
 use api_db::types::{Id, Model,};
-use crate::types::{Provider, ProviderType, now, AccessToken, SessionToken, RefreshToken};
+use crate::types::{auth::{Provider, ProviderType}, now, AccessToken, SessionToken, RefreshToken};
 use super::{Profile, Account,};
 
 #[derive(PartialOrd,  Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]

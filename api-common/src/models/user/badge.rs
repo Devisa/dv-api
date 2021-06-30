@@ -9,8 +9,9 @@ use sqlx::{
 
 #[async_trait::async_trait]
 impl Model for UserBadge {
-
+    #[inline]
     fn table() -> String { "user_badges".to_string() }
+    #[inline]
     fn id_str() -> String { "user_badge_id".to_string() }
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("INSERT INTO user_badges
@@ -56,5 +57,7 @@ impl UserBadge {
 
 }
 
+#[inline]
 pub fn starting_level() -> u32 { 0 }
+#[inline]
 pub fn starting_exp() -> f32 { 0.0 }

@@ -1,14 +1,16 @@
 use crate::util::respond;
 use api_db::{Db, Id, Model};
-use api_common::models::account::Account;
+use api_common::{
+    models::user::{
+        account::{Account, AccountQuery},
+        credentials::Credentials,
+    },
+    types::auth::{Provider, ProviderType},
+};
 use actix_web::{
     HttpRequest, HttpResponse, Responder, get, http::StatusCode, post,
     web::{self, Path, Data, Json, ServiceConfig}
 };
-
-pub struct Accounts {
-    pub id: Id,
-}
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -140,7 +142,7 @@ mod tests {
             user_id: user.clone().id,
             provider_account_id: Id::new(cid),
             provider_id: Provider::Devisa,
-            provider_type: "credentials".to_string(),
+            provider_type: ProviderType::Credentials,
             access_token: None,
             refresh_token: None,
             access_token_expires: None,

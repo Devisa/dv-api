@@ -1,11 +1,15 @@
 use derive_more::Display;
 
-pub type DiResult<T> = Result<T, DiError>;
+pub type DiLibResult<T> = Result<T, DiLibError>;
 
 #[derive(Display, Debug)]
-pub enum DiError {
+#[display(fmt = "api_common error")]
+pub enum DiLibError {
     ParseUuidError(uuid::Error),
-    DatabaseError(sqlx::error::Error)
+    SerializeError(String),
+    DeserializeError(String),
+    DatabaseError(sqlx::error::Error),
+    IoError(std::io::Error),
 }
 
 /* impl std::error::Error for DiError {

@@ -2,7 +2,7 @@ use api_db::{Model, Db, Id};
 use crate::util::respond;
 use api_common::{
     auth::jwt,
-    models::{Session, credentials::Credentials}
+    models::{Session, user::credentials::Credentials}
 };
 use actix_web::{Responder, HttpRequest, HttpResponse, HttpResponseBuilder, get, http::StatusCode, post, web::{self, ServiceConfig, Path, Json, Data}};
 

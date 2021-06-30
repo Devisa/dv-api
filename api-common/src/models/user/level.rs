@@ -73,5 +73,7 @@ impl UserLevel {
     }
 }
 
+#[inline]
 pub fn starting_level() -> u32 { 0 }
+#[inline]
 pub fn starting_exp() -> f32 { 0.0 }

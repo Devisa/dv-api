@@ -1,20 +1,40 @@
-use serde::{
-    Serialize, Deserialize, ser::{Serializer, SerializeStruct}
-};
-use std::error;
-use std::fmt;
-
+use serde::{Serialize, Deserialize, ser::{Serializer, SerializeStruct}};
+use std::{fmt, error};
 use api_db::DdbError;
 use derive_more::{Error, From, Into, Display};
 use actix_web::{
+    http::StatusCode,
     error::{ResponseError, JsonPayloadError, QueryPayloadError},
     HttpResponse, HttpRequest,
 };
-use actix_web::http::StatusCode;
 use serde_json::Value;
 
-#[derive(Debug)]
-pub struct GenericError {
+#[derive(Debug, Display)]
+pub enum ApiError {
+    #[display(fmt = "Token error")]
+    TokenError { token: String },
+    #[display(fmt = "Missing param")]
+    MissingParam { param: String },
+    #[display(fmt = "Path not found")]
+    PathNotFound { path: String },
+    #[display(fmt = "Object not found")]
+    ObjectNotFound { object: String },
+    #[display(fmt = "Auth error")]
+    AuthError,
+    #[display(fmt = "Internal server error")]
+    InternalError(String),
+    #[display(fmt = "Parse error")]
+    ParseError(ParseError),
+    #[display(fmt = "Db error")]
+    DbError(DdbError),
+    #[display(fmt = "JsonRPC error")]
+    JsonRpcError(JsonRpcError),
+}
+
+#[derive(Debug, Display, Error)]
+pub enum ParseError {
+    Json(serde_json::Error),
+    Uuid(uuid::Error),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,34 +88,6 @@ impl ResponseError for JsonRpcError {
     }
 }
 
-#[derive(Debug, Display)]
-pub enum ApiError {
-    #[display(fmt = "Token error")]
-    TokenError { token: String },
-    #[display(fmt = "Missing param")]
-    MissingParam { param: String },
-    #[display(fmt = "Path not found")]
-    PathNotFound { path: String },
-    #[display(fmt = "Object not found")]
-    ObjectNotFound { object: String },
-    #[display(fmt = "Auth error")]
-    AuthError,
-    #[display(fmt = "Internal server error")]
-    InternalError(String),
-    #[display(fmt = "Parse error")]
-    ParseError(ParseError),
-    #[display(fmt = "Db error")]
-    DbError(DdbError),
-    #[display(fmt = "JsonRPC error")]
-    JsonRpcError(JsonRpcError),
-}
-
-
-#[derive(Debug, Display, Error)]
-pub enum ParseError {
-    Json(serde_json::Error),
-    Uuid(uuid::Error),
-}
 
 pub type ApiResult<T> = Result<T, ApiError>;
 
@@ -142,12 +134,6 @@ impl ResponseError for TokenError {
 
 
 impl std::error::Error for ApiError {}
-
-impl fmt::Display for GenericError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("DFDF")
-    }
-}
 
 impl From<sqlx::Error> for ApiError {
     fn from(err: sqlx::Error) -> ApiError {

@@ -1,6 +1,6 @@
 use api_db::{Model, Id, Db};
 use crate::util::respond;
-use api_common::models::{Profile, verification::VerificationRequest};
+use api_common::models::user::{profile::Profile, verification::VerificationRequest};
 use sqlx::{prelude::*, postgres::Postgres};
 use actix_web::{
     delete, HttpRequest, HttpResponse, Responder, get, http::StatusCode, post,

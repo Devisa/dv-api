@@ -1,5 +1,5 @@
 use crate::util::respond;
-use api_common::models::verification::VerificationRequest;
+use api_common::models::user::verification::VerificationRequest;
 use sqlx::{prelude::*, postgres::Postgres};
 use api_db::{Db, Model, Id};
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::StatusCode, post, web::{self, ServiceConfig, Path, Json, Data}};

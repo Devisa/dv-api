@@ -1,8 +1,14 @@
 pub mod badge;
+pub mod feel;
+pub mod verification;
 pub mod graph;
 pub mod level;
+pub mod session;
+pub mod credentials;
 pub mod link;
 pub mod mail;
+pub mod account;
+pub mod profile;
 
 use std::borrow::Cow;
 use actix::prelude::*;
@@ -52,8 +58,9 @@ pub struct User {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserIn {
-    pub name: String,
     pub email: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email_verified: Option<NaiveDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -83,7 +90,7 @@ impl From<UserIn> for User {
     fn from(user: UserIn) -> Self {
         User {
             id: Id::gen(),
-            name: Some(user.name),
+            name: user.name,
             image: user.image,
             email: Some(user.email),
             email_verified: user.email_verified,
@@ -333,26 +340,31 @@ pub struct UserCompleteView {
 impl Actor for User {
     type Context = Context<Self>;
 
+    #[inline]
     fn started(&mut self, _ctx: &mut Self::Context) {
         log::info!("USER: {:?} has entered the network.", &self.email);
     }
 
+    #[inline]
     fn stopped(&mut self, _ctx: &mut Self::Context) {
         log::info!("USER: {:?} has left the network.", &self.email);
     }
 }
 
 impl async_graphql::Type for User {
+    #[inline]
     fn type_name() -> std::borrow::Cow<'static, str> {
         Cow::Owned("user".to_string())
     }
+    #[inline]
     fn create_type_info(registry: &mut async_graphql::registry::Registry) -> String {
         "user".to_string()
     }
-
+    #[inline]
     fn qualified_type_name() -> String {
         "user".to_string()
     }
+    #[inline]
     fn introspection_type_name(&self) -> std::borrow::Cow<'static, str> {
         Cow::Owned("user".to_string())
     }

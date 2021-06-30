@@ -2,7 +2,7 @@ pub mod redis;
 use api_db::{Db, Model, Id};
 use api_common::types::{
     time::{ Expiration, ExpirationQuery },
-    Provider, ProviderType,
+    auth::{Provider, ProviderType,}
 };
 use crate::util::respond;
 use api_common::models::Session;

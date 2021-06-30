@@ -1,4 +1,5 @@
 pub mod types;
+pub mod query;
 pub mod proc;
 pub mod models;
 pub mod util;

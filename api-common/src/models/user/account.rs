@@ -1,9 +1,11 @@
-use crate::types::{token::{Token, AccessToken}, Expiration, RefreshToken, Status, now, private};
+use crate::{models::User, query::datetime::DateFilter, types::{
+        Expiration, RefreshToken, Status,
+        auth::{Provider, ProviderType},
+        now, private, token::{Token, AccessToken}
+    }};
 use api_db::{Model, Id, Db};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
-use derive_more::{FromStr, Display};
-pub use crate::types::{ProviderType, Provider};
 
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
@@ -12,10 +14,11 @@ pub struct Account {
     pub id: Id,
     #[serde(default = "Id::nil")]
     pub user_id: Id,
-    pub provider_type: String,
+    #[serde(default = "ProviderType::default")]
+    pub provider_type: ProviderType,
     #[serde(default = "Provider::devisa_creds_provider_id")]
     pub provider_id: Provider,
-    #[serde(default = "Id::gen")]
+    #[serde(default = "Id::nil")]
     pub provider_account_id: Id,
     #[serde(skip_serializing_if="Option::is_none")]
     pub refresh_token: Option<RefreshToken>,
@@ -29,14 +32,23 @@ pub struct Account {
     pub updated_at: NaiveDateTime,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct AccountQuery {
+    pub provider_type: Option<ProviderType>,
+    pub provider_id: Option<Provider>,
+    pub access_token_expires_filters: Vec<DateFilter>,
+    pub created_at_filters: Vec<DateFilter>,
+    pub updated_at_filters: Vec<DateFilter>,
+}
+
 impl Default for Account {
     fn default() -> Self {
         Account {
             id: Id::gen(),
             user_id: Id::nil(),
-            provider_type: "credentials".to_string(),
+            provider_type: ProviderType::Credentials,
             provider_id: Provider::Devisa,
-            provider_account_id: Id::gen(),
+            provider_account_id: Id::nil(),
             refresh_token: None,
             access_token: None,
             access_token_expires: None,
@@ -49,7 +61,10 @@ impl Default for Account {
 #[async_trait::async_trait]
 impl Model for Account {
 
+    #[inline]
     fn table() -> String { String::from("accounts") }
+    #[inline]
+    fn id_str() -> String { String::from("account_id") }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let acct = sqlx::query_as::<Postgres, Self>("
@@ -64,7 +79,7 @@ impl Model for Account {
                 access_token_expires,
                 created_at,
                 updated_at
-                )
+            )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
             ")
@@ -86,12 +101,27 @@ impl Model for Account {
 }
 
 impl Account {
-
-    pub fn new_google_account(user_id: Id,creds_id: Id,) -> Account {
-        Self::default()
+    #[inline]
+    pub fn new_creds(user_id: Id, provider_account_id: Id, provider_id: Provider) -> Self {
+        Self {
+            id: Id::gen(),
+            user_id,
+            provider_account_id,
+            provider_id,
+            ..Default::default()
+        }
     }
-
-    pub async fn get_credentials_account(db: &PgPool, user_id: Id) -> sqlx::Result<Option<Self>> {
+    #[inline]
+    pub fn new_oauth(user_id: Id, provider_account_id: Id, provider_id: Provider) -> Self {
+        Self {
+            id: Id::gen(),
+            user_id,
+            provider_account_id,
+            provider_id,
+            ..Default::default()
+        }
+    }
+    pub async fn get_by_provider_type(db: &PgPool, user_id: Id, p_type: ProviderType) -> sqlx::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, Self>(
             "SELECT * FROM accounts WHERE
                  user_id = $1 AND
@@ -103,27 +133,38 @@ impl Account {
             .await?;
         Ok(res)
     }
-
-    pub async fn update_creds_access_token(
-        db: &PgPool,
-        user_id: &Id,
-        access_token: &AccessToken
-    ) -> sqlx::Result<Option<Self>> {
+    pub async fn update_access_token(self, db: &PgPool, access_token: &AccessToken)
+        -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>(
-            "UPDATE accounts
-             SET
-                access_token = $1
-                updated_at = $2
-             WHERE
-                 user_id = $3 AND
-                 provider_type = 'credentials'
-             RETURNING *
-            ")
+            "UPDATE    accounts
+             SET       access_token = $1, updated_at = $2
+             WHERE     id = $3
+             RETURNING *")
             .bind(&access_token)
             .bind(now())
-            .bind(&user_id)
-            .fetch_optional(db)
+            .bind(&self.id)
+            .fetch_one(db)
             .await?;
+        Ok(res)
+    }
+    pub async fn update_refresh_token(self, db: &PgPool, refresh_token: &RefreshToken)
+        -> sqlx::Result<Self> {
+        let res = sqlx::query_as::<Postgres, Self>(
+            "UPDATE    accounts
+             SET       refresh_token = $1, updated_at = $2
+             WHERE     id = $3
+             RETURNING *")
+            .bind(&refresh_token)
+            .bind(now())
+            .bind(&self.id)
+            .fetch_one(db)
+            .await?;
+        Ok(res)
+    }
+
+    pub async fn get_user(self, db: &PgPool) -> sqlx::Result<User> {
+        let res = User::get(db, self.user_id).await?
+            .expect("(Infallible)");
         Ok(res)
     }
 
@@ -132,7 +173,7 @@ impl Account {
         Account {
             id: Id::gen(),
             user_id,
-            provider_type: "credentials".to_string(),
+            provider_type: ProviderType::Credentials,
             provider_id: Provider::Devisa,
             provider_account_id: creds_id,
             refresh_token: None,
@@ -142,28 +183,6 @@ impl Account {
             updated_at: now(),
         }
     }
-    /*
-    pub async fn get_all(db: &PgPool) -> anyhow::Result<Vec<Self>> {
-        let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts")
-            .fetch_all(db).await?;
-        Ok(acct)
-    }
-
-     pub async fn get_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
-        let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts WHERE id = $1")
-            .bind(id)
-            .fetch_optional(db).await?;
-        Ok(acct)
-    }
-
-    pub async fn delete_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
-        let acct = sqlx::query_as::<Postgres, Self>("DELETE FROM accounts WHERE id = $1 RETURNING *")
-            .bind(id)
-            .fetch_optional(db).await?;
-        Ok(acct)
-    }
-    */
-
     pub fn access_token(self) -> Option<AccessToken> {
         self.access_token
     }
@@ -191,7 +210,8 @@ impl Account {
     }
 
     pub async fn get_by_provider_account_id(db: &PgPool, paid: Id) -> anyhow::Result<Option<Self>> {
-        let acct = sqlx::query_as::<Postgres, Self>("SELECT * FROM accounts WHERE provider_account_id = $1")
+        let acct = sqlx::query_as::<Postgres, Self>("
+            SELECT * FROM accounts WHERE provider_account_id = $1")
             .bind(paid)
             .fetch_optional(db).await?;
         Ok(acct)

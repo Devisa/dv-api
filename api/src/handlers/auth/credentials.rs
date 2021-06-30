@@ -11,13 +11,12 @@ use actix_web::{
     cookie::Cookie,
     web::{self, ServiceConfig, Json, Data, Form, Path}
 };
-use api_common::{
+use api_common::
     models::{
-        Profile, Session,Account,
-        credentials::{CredentialsSignup, CredentialsIn, Credentials},
-        user::{User, UserIn}
-    },
-};
+        user::{UserIn, User, session::Session, account::Account, profile::Profile},
+        user::credentials::{CredentialsSignup, CredentialsIn, Credentials},
+    };
+
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
@@ -199,7 +198,7 @@ mod tests {
     use actix_http::StatusCode;
     use actix_web::{test::{TestRequest, self}, dev, web::{self, Form}};
     use api_common::models::{Account, Profile};
-    use api_common::types::{Provider, ProviderType};
+    use api_common::types::auth::{Provider, ProviderType};
 
     fn new_creds_signup(username: &str, password: &str, email: &str, name: &str) -> CredentialsSignup {
         CredentialsSignup {

@@ -14,11 +14,11 @@ use actix_web::{
 use api_common::{
     auth::jwt,
     models::{Account, Profile, Session,
-        credentials::{CredentialsSignup, CredentialsIn, Credentials},
-        user::{User, UserIn}
+        user::{User, UserIn, credentials::{CredentialsSignup, CredentialsIn, Credentials}},
     },
     types::{
-        AccessToken, Expiration, Provider, ProviderType,
+        AccessToken, Expiration,
+        auth::{Provider, ProviderType},
         token::Token,
     }
 };
@@ -127,13 +127,17 @@ pub async fn logout(db: Data<Db>, sess: Data<ApiSession>, req: HttpRequest) -> i
 pub async fn login(db: Data<Db>, cr: Json<CredentialsIn>) -> impl Responder {
     match Credentials::verify(&db.pool, &cr.username, &cr.password).await {
         Ok(creds) => {
-            let user = Credentials::get_user(&db.pool, creds.user_id)
-                .await.unwrap();
+            let user = Credentials::get_user(&db.pool, creds.clone().user_id)
+                .await.expect("Could not fetch user from creds");
             let sess = Session::create(user.clone().id, Expiration::two_days())
                 .expect("Could not create session");
-            let acct = Account::update_creds_access_token(&db.pool, &user.id, &sess.access_token).await
-                .expect("DB ERROR: Could not insert account")
-                .expect("ERROR: No credentials account with that user ID");
+            let acct = Account::get_by_provider_account_id(&db.pool, creds.clone().id)
+                .await
+                .expect("DB ERROR: Could not fetch account from prov. acct. ID")
+                .expect("ERROR: No credentials provider account with that ID");
+            let acct = acct.update_access_token(&db.pool, &sess.access_token)
+                .await
+                .expect("DB ERROR: Could not update account access token");
             let a_tok = sess.clone().access_token.get();
             HttpResponse::Ok()
                 .append_header(("dvsa-auth", a_tok.as_str()))
@@ -277,8 +281,18 @@ mod tests {
         dev::Server,
     };
 
+    /// Stage 1 of the signup -- input user det., min email
+    /// Stage 2 of the signup -- input credentials
     #[actix_rt::test]
     async fn check_creds_signup_ok() -> ApiResult<()> {
+        let creds = UserIn {
+            email:"testman1@email.com".into(),
+            ..Default::default()
+        };
+        let creds = CredentialsIn {
+            username: "testman1".into(),
+            password: "testpass1".into()
+        };
         Ok(())
     }
 

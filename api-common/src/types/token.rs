@@ -1,5 +1,4 @@
 use std::convert::{TryFrom, TryInto};
-
 use chrono::Duration;
 use sqlx::{PgPool, self, Database, Type, TypeInfo};
 use serde::{Serialize, Deserialize};
@@ -27,8 +26,10 @@ pub struct AccessToken(String);
 #[async_trait::async_trait]
 pub trait Token {
 
+    #[inline]
     fn new(token: String) -> Self;
 
+    #[inline]
     fn nil() -> Self;
 
 }
@@ -37,9 +38,11 @@ pub trait Token {
 #[async_trait::async_trait]
 impl Token for SessionToken {
 
+    #[inline]
     fn new(token: String) -> Self {
         Self(token)
     }
+    #[inline]
     fn nil() -> Self {
         Self(String::new())
     }
@@ -48,9 +51,11 @@ impl Token for SessionToken {
 #[async_trait::async_trait]
 impl Token for AccessToken {
 
+    #[inline]
     fn new(token: String) -> Self {
         Self(token)
     }
+    #[inline]
     fn nil() -> Self {
         Self(String::new())
     }
@@ -80,7 +85,6 @@ impl AccessToken {
 
     pub fn encoded_user(self) -> anyhow::Result<EncodedUser> {
         EncodedUser::try_from(self.decode()?)
-
     }
 
     pub fn is_expired(self) -> anyhow::Result<bool> {
@@ -94,6 +98,7 @@ impl AccessToken {
 
     }
 
+    #[inline]
     pub fn get(self) -> String {
         self.0
     }
@@ -101,6 +106,7 @@ impl AccessToken {
 
 // TODO NOTE should have some user/account identifying info?
 impl Default for SessionToken {
+    #[inline]
     fn default() -> Self {
         Self(uuid::Uuid::new_v4().to_string())
     }
@@ -109,6 +115,13 @@ impl Default for SessionToken {
 #[derive(sqlx::Type, PartialEq,Debug, Clone, Serialize, Deserialize, From, AsRef, AsMut, Display)]
 #[sqlx(transparent, type_name = "refresh_token")]
 pub struct RefreshToken(String);
+
+impl Default for RefreshToken {
+    #[inline]
+    fn default() -> Self {
+        RefreshToken(uuid::Uuid::new_v4().to_string())
+    }
+}
 
 // impl<DB> Type<DB> for AccessToken{
 /*

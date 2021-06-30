@@ -71,10 +71,12 @@ sentry = "0.22.0"
 sentry-actix = "0.22.0"
 tracing = "0.1.26"
 # tracing-actix-web = "0.4.0-beta.7"
-# actix-redis = { version = "0.10.0-beta.1", features = ["web"] }
-# actix-cors = "=0.6.0-beta.1"
 # actix-identity = "=0.4.0-beta.1"
-# actix-session = { git = "https://github.com/actix/actix-extras/" }
+# actix-cors = "=0.6.0-beta.2"
+# actix-session = { version = "=0.5.0-beta.2" }
+# actix-identity = { version = "=0.4.0-beta.2" }
+# actix-web-httpauth = "=0.6.0-beta.2"
+# actix-redis = { version = "0.10.0-beta.1", features = ["web"] }
 
 
 # tracing-actix = "0.3.0"
@@ -96,7 +98,6 @@ tracing = "0.1.26"
 # once_cell = "1.7.2"
 # tinyvec = "1.2.0"
 # sentry = "0.22.0"
-# actix-web-httpauth = "0.6.0-beta.1"
 # actix-cors = "0.6.0-beta.1
 # cookie = "0.15"
 # actix-web-actors = ">=4.0.0-beta.4"
@@ -153,7 +154,11 @@ grpc = ["api-proto", "protobuf", "actix-protobuf"]
 [workspace]
 
 members = [
-  "./api/api-gql",
+  "./api/lib/api-gql",
+  "./api/lib/api-rpc",
+  "./api/lib/api-auth",
+  "./api/lib/api-search",
+  "./api/lib/api-channels",
   "./api-rt",
   "./api-common",
   "./api-proto",
@@ -163,7 +168,11 @@ members = [
 ]
 
 default-members = [
-  "./api/api-gql",
+  "./api/lib/api-gql",
+  "./api/lib/api-rpc",
+  "./api/lib/api-auth",
+  "./api/lib/api-search",
+  "./api/lib/api-channels",
   "./api-rt",
   "./api-common",
   "./api-proto",
@@ -180,15 +189,15 @@ default-members = [
 # path = "api/src/bin/server.rs"
 
 [profile.dev]
-opt-level = 1
+opt-level = 0
+debug-assertions = true
 overflow-checks = false
-debug = true
 incremental = true
+debug = true
 panic = 'unwind'
 lto = false
-debug-assertions = true
 codegen-units = 256
-rpath = false
+# rpath = false
 
 [profile.release]
 opt-level = 3
@@ -214,3 +223,7 @@ lto = false
 
 [profile.bench]
 opt-level = 3
+
+[target.x86_64-unknown-linux-gnu]
+linker = "/usr/bin/clang"
+rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zshare-generics=y"]

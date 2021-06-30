@@ -746,6 +746,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15af2628f6890fe2609a3b91bef4c83450512802e59489f9c1cb1fa5df064a61"
 
 [[package]]
+name = "api-auth"
+version = "0.1.0"
+
+[[package]]
+name = "api-channels"
+version = "0.1.0"
+
+[[package]]
 name = "api-cloud"
 version = "0.1.0"
 dependencies = [
@@ -884,6 +892,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "api-rpc"
+version = "0.1.0"
+
+[[package]]
 name = "api-rt"
 version = "0.1.0"
 dependencies = [
@@ -908,6 +920,10 @@ dependencies = [
  "tonic-build",
  "warp",
 ]
+
+[[package]]
+name = "api-search"
+version = "0.1.0"
 
 [[package]]
 name = "arrayvec"

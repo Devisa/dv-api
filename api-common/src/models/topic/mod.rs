@@ -24,6 +24,7 @@ pub struct ScoreRequest {
 }
 
 impl Default for ScoreRequest {
+    #[inline]
     fn default() -> Self {
         Self {
             user_id: Id::gen(),
@@ -33,6 +34,7 @@ impl Default for ScoreRequest {
 }
 
 impl ScoreRequest {
+    #[inline]
     fn zero() -> f64 { 0.0 }
 }
 
@@ -67,6 +69,7 @@ pub struct Topic {
 
 #[async_trait::async_trait]
 impl Model for Topic {
+    #[inline]
     fn table() -> String { String::from("topics") }
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let top = sqlx::query_as::<Postgres, Topic>("
@@ -83,7 +86,9 @@ impl Model for Topic {
 
 #[async_trait::async_trait]
 impl Model for Category {
+    #[inline]
     fn table() -> String { String::from("categories") }
+    #[inline]
     fn id_str() -> String { String::from("category_id") }
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res =  sqlx::query_as::<Postgres, Self>("
@@ -98,7 +103,9 @@ impl Model for Category {
 }
 #[async_trait::async_trait]
 impl Model for TopicCategory {
+    #[inline]
     fn table() -> String { String::from("topic_categories") }
+    #[inline]
     fn id_str() -> String { String::from("topic_category_id") }
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res =  sqlx::query_as::<Postgres, TopicCategory>("
@@ -115,6 +122,7 @@ impl Model for TopicCategory {
 }
 #[async_trait::async_trait]
 impl Model for TopicVote {
+    #[inline]
     fn table() -> String { String::from("topic_votes") }
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res =  sqlx::query_as::<Postgres, TopicVote>("
@@ -551,10 +559,12 @@ pub struct TopicLink {
 impl Actor for Topic {
     type Context = Context<Self>;
 
+    #[inline]
     fn started(&mut self, ctx: &mut Self::Context) {
         println!("Topic has started tracking");
     }
 
+    #[inline]
     fn stopped(&mut self, ctx: &mut Self::Context) {
         println!("Topic has stopped tracking");
     }
