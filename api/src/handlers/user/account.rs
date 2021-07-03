@@ -1,9 +1,7 @@
 use crate::util::respond;
 use api_db::{Db, Id, Model};
 use api_common::{
-    models::user::{
-        account::{Account, AccountQuery},
-        credentials::Credentials,
+    models::user::{ account::{Account, AccountQuery}, credentials::Credentials,
     },
     types::auth::{Provider, ProviderType},
 };
@@ -19,6 +17,10 @@ pub fn routes(cfg: &mut ServiceConfig) {
             .route(web::post().to(add_new))
             .route(web::put().to(update))
             .route(web::delete().to(delete_all))
+        )
+        .service(web::resource("/{provider_id}")
+            .route(web::get().to(|| HttpResponse::Ok().body("get all by provider id")))
+            .route(web::post().to(|| HttpResponse::Ok().body("get all by provider id")))
         )
         .service(web::scope("/id/{account_id}").configure(routes_id))
         .service(web::scope("/user_id/{user_id}").configure(routes_user_id));

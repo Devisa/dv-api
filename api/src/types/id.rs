@@ -1,12 +1,14 @@
 use std::{ops, fmt, convert::{TryFrom, TryInto}};
+use futures_util::future::{ok, err, Ready};
+use crate::{error::ParseError, ApiError};
+use actix_http::Payload;
+use futures_util::Future;
 use serde::{Serialize, Deserialize};
 use sqlx::{Type, PgPool};
 use uuid::Uuid;
-use crate::error::DdbError;
+use actix_web::{FromRequest, HttpRequest, web::{self, Path}};
 
-        // PartialEq, Debug, Clone, Display, AsRef, AsMut)]
-
-#[derive(Type,Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Type,Clone, Debug, Serialize, Deserialize,  PartialEq, PartialOrd)]
 #[sqlx(transparent, type_name = "id")]
 pub struct Id(String);
 
@@ -31,7 +33,7 @@ impl Id {
             .map(|u| u.is_nil())
             .map_err(|e| {
                 tracing::error!(target: "db encoding", "Could not parse UUID {}", e);
-                DdbError::ParseUuidError(e)
+                ApiError::ParseError(ParseError::Uuid(e))
             })
             .unwrap_or(true)
     }
@@ -39,7 +41,6 @@ impl Id {
     pub fn nil() -> Self {
         Self(Uuid::nil().to_string())
     }
-
     pub fn get(self) -> String {
         self.0
     }
@@ -59,12 +60,12 @@ impl Id {
 }
 
 impl TryFrom<String> for Id {
-    type Error = DdbError;
+    type Error = ApiError;
     fn try_from(string: String) -> Result<Self, Self::Error> {
         let id = Uuid::parse_str(&string)
             .map_err(|e| {
                 tracing::info!("Eror decoding UUID: {}", e);
-                DdbError::ParseUuidError(e)
+                ApiError::ParseError(ParseError::Uuid(e))
             })?
             .to_string();
         Ok(Id(id))
@@ -88,10 +89,9 @@ impl Into<Uuid> for Id {
             .expect("Could not convert ID str to UUID")
     }
 }
-
 impl ops::Deref for Id {
     type Target = String;
-    fn deref(&self) -> &Self::Target {
+    fn deref(&self) -> &String {
         &self.0
     }
 }
@@ -100,13 +100,24 @@ impl ops::DerefMut for Id {
         &mut self.0
     }
 }
-impl std::convert::AsRef<String> for Id {
-    fn as_ref(&self) -> &String {
-        &self.0
-    }
-}
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl FromRequest for Id {
+    type Config = ();
+    type Error = ApiError;
+    type Future = Ready<Result<Self, Self::Error>>;
+
+    #[inline]
+    fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
+        let req = req.head().headers.get("dvsa-user-id");
+        if let Some(user_id) = req {
+            return ok(Id(user_id.to_str().unwrap().to_string()));
+        } else {
+            return err(ApiError::MissingParam { param: "dvsa-user-id".to_string() });
+        }
     }
 }

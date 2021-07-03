@@ -4,8 +4,10 @@ use uuid::Uuid;
 use sqlx::{PgPool, self};
 use serde::{Serialize, Deserialize};
 use api_db::{Id, Model};
-use crate::auth::jwt::*;
-use crate::models::Session;
+use api_common::{
+    models::Session,
+    auth::jwt::*,
+};
 use derive_more::{AsRef, AsMut, Display, From};
 use super::Expiration;
 

@@ -7,7 +7,7 @@ pub mod session;
 pub mod credentials;
 pub mod link;
 
-use api_db::{Model, Id, Db};
+use api_db::{Id, Model, Db};
 use crate::util::respond;
 use api_common::models::User;
 use actix_web::{

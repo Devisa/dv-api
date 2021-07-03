@@ -13,6 +13,7 @@
 
 ---
 ### Notes
+- [ ] ^[07/03/21]^ ^[07:41]^ **TODO**: Automate API routes so that models and corresponding operations, esp. those standardized across models, can be automated. I.e., extract `User` model designation from `"/user"`, then match `POST` requests to some `create()` method which requires the user model in Json spec to insert into Db, to reduce massive boilerplate.
 
 
 ---

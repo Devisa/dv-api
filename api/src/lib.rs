@@ -1,5 +1,6 @@
 pub mod api;
 pub(crate) mod test;
+pub mod types;
 pub mod context;
 pub mod metrics;
 pub mod prelude;
