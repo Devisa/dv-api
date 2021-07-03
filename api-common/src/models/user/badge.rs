@@ -29,6 +29,7 @@ impl Model for UserBadge {
 }
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+#[sqlx(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub struct UserBadge {
     #[serde(default = "Id::gen")]

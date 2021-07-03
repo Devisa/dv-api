@@ -5,6 +5,7 @@ use std::{error, fmt};
 pub enum DdbError {
     FailedToAcquireFromPool,
     NotFound,
+    MigrationError,
     ParseUuidError(uuid::Error),
     ConnectionFailed(sqlx::Error),
     DatabaseError(sqlx::Error),
@@ -13,6 +14,7 @@ pub enum DdbError {
 pub type DdbResult<T> = Result<T, DdbError>;
 
 impl fmt::Display for DdbError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ParseUuidError(e) => f.write_fmt(format_args!("Parse UUID error: {}", e)),
@@ -25,6 +27,7 @@ impl fmt::Display for DdbError {
 }
 
 impl error::Error for DdbError {
+    #[inline]
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::ParseUuidError(e) => e.source(),
@@ -36,6 +39,7 @@ impl error::Error for DdbError {
 }
 
 impl From<uuid::Error> for DdbError {
+    #[inline]
     fn from(e: uuid::Error) -> Self {
         Self::ParseUuidError(e)
     }

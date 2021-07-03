@@ -31,7 +31,6 @@ use crate::{db::Db, util::respond};
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
-        .service(dict)
         .service(web::scope("/user").configure(user::routes))
         .service(web::scope("/item").configure(item::routes))
         .service(web::scope("/link").configure(link::routes))

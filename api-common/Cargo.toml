@@ -17,10 +17,10 @@ api-http = { path = "./api-http" }
 api-db = { path = "../api-db" }
 
 actix = "*"
-actix-web = { version = "=4.0.0-beta.7", features = ["rustls"] }
+actix-web = { version = "=4.0.0-beta.8", features = ["rustls"] }
 async-graphql = { version ="2.9.3", features=["chrono", "url", "uuid"] }
-actix-service = { version = "2.0.0" }
-actix-http = { version = "=3.0.0-beta.7" }
+# actix-service = { version = "2.0.0" }
+actix-http = { version = "=3.0.0-beta.8" }
 serde = { version = "1.0.126", features = ["derive"] }
 async-trait = "*"
 serde_json = "1.0.64"
@@ -31,23 +31,22 @@ chrono = { version = "0.4.19", features = ["serde"] }
 dotenv = "0.15.0"
 log = "0.4.14"
 anyhow = "1.0.41"
-ring = "0.16.20"
 dynomite = "0.10.0"
-fake = { version = "2.4", features=['derive', 'chrono', 'http']}
 rand = "0.8.3"
 lettre = "0.10.0-beta.4"
-petgraph = "0.5.1"
-url = { version = "2.2.2", features = ["serde"] }
-
 tracing = "*"
-tracing-appender = "0.1.2"
 tracing-futures = "0.2.5"
-tracing-log = "0.1.2"
-tracing-opentelemetry = { version = "0.13.0", default-features = false }
-opentelemetry = { version = "0.14.0", default-features = false, features = ["trace", "rt-tokio"] }
 jsonwebtoken = "7.2.0"
-actix-broker = "0.4.1"
 derive_more = "0.99.14"
+# fake = { version = "2.4", features=['derive', 'chrono', 'http']}
+# ring = "0.16.20"
+# tracing-log = "0.1.2"
+# tracing-appender = "0.1.2"
+# actix-broker = "0.4.1"
+# tracing-opentelemetry = { version = "0.13.0", default-features = false }
+# opentelemetry = { version = "0.14.0", default-features = false, features = ["trace", "rt-tokio"] }
+# petgraph = "0.5.1"
+# url = { version = "2.2.2", features = ["serde"] }
 # juniper = { git = "https://github.com/graphql-rust/juniper" }
 # juniper_actix = "*"
 
@@ -60,7 +59,7 @@ actix-rt = "2.2.0"
 
 
 [dependencies.sqlx]
-version = "0.5.1"
+version = "0.5.5"
 default-features = false
 features = [
   "postgres", "runtime-actix-rustls", "macros", "chrono",

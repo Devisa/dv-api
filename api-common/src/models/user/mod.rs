@@ -11,9 +11,9 @@ pub mod account;
 pub mod profile;
 
 use std::borrow::Cow;
+use serde::{Serialize, Deserialize};
 use actix::prelude::*;
 use rand::{distributions::{Uniform, Alphanumeric}, Rng, prelude::Distribution};
-use fake::{Dummy, Fake, Faker, faker};
 use api_db::types::Model;
 use crate::{
     types::{Id, Status, now, private},
@@ -26,7 +26,6 @@ use crate::{
         }
     },
 };
-use serde::{Serialize, Deserialize};
 use sqlx::{
     FromRow, Postgres, postgres::PgPool,
     types::chrono::{NaiveDateTime, Utc}
@@ -34,11 +33,8 @@ use sqlx::{
 
 use self::level::UserLevel;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct UserId {
-    pub user_id: Id,
-}
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq, )]
+#[sqlx(rename_all = "snake_case")]
 pub struct User {
     #[serde(default = "Id::gen")]
     pub id: Id,
@@ -58,6 +54,7 @@ pub struct User {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserIn {
+    #[serde(default = "String::new")]
     pub email: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -73,6 +70,7 @@ pub struct UserIn {
 }
 
 impl Default for User {
+    #[inline]
     fn default() -> Self {
         User {
             id: Id::gen(),
@@ -87,6 +85,7 @@ impl Default for User {
 }
 
 impl Default for UserIn {
+    #[inline]
     fn default() -> Self {
         UserIn{
             name: None,
@@ -100,6 +99,7 @@ impl Default for UserIn {
 }
 
 impl From<UserIn> for User {
+    #[inline]
     fn from(user: UserIn) -> Self {
         User {
             id: Id::gen(),
@@ -126,6 +126,7 @@ impl UserIn {
 
 #[async_trait::async_trait]
 impl Model for User {
+    #[inline]
     fn table() -> String { String::from("users") }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
@@ -147,6 +148,7 @@ impl Model for User {
 
 impl User {
 
+    #[inline]
     pub fn new(name: Option<String>, email: Option<String>, image: Option<String>) -> Self {
         User {
             name, email, image,
@@ -179,27 +181,6 @@ impl User {
             name: Some(name),
         }
     }
-
-    // pub async fn clear(self, db: &PgPool) -> sqlx::Result<Vec<Self>> {
-    //     let res = sqlx::query_as::<Postgres, Self>("DELETE * FROM users RETURNING *")
-    //         .fetch_all(db).await?;
-    //     Ok(res)
-    // }
-
-
-    // pub async fn get(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
-    //     let res = sqlx::query_as::<Postgres, User>("SELECT * FROM users WHERE id = $1")
-    //         .bind(id)
-    //         .fetch_optional(db).await?;
-    //     Ok(res)
-    // }
-
-    // pub async fn delete_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
-    //     let res = sqlx::query_as::<Postgres, User>("DELETE FROM users WHERE id = $1 RETURNING *")
-    //         .bind(id)
-    //         .fetch_optional(db).await?;
-    //     Ok(res)
-    // }
 
     pub async fn get_by_username(db: &PgPool, username: &str) -> anyhow::Result<Option<Self>> {
         let res = sqlx::query_as::<Postgres, User>("
@@ -293,12 +274,6 @@ impl User {
         Ok(res)
     }
 
-    /* pub async fn get_all(db: &PgPool) -> anyhow::Result<Vec<Self>> {
-        let res = sqlx::query_as::<Postgres, User>("SELECT * FROM users")
-            .fetch_all(db).await?;
-        Ok(res)
-    } */
-
     pub async fn add_record(self, db: &PgPool, name: String) -> sqlx::Result<Record> {
         let record = Record::new(name, self.id);
         record.insert(db).await
@@ -381,6 +356,18 @@ impl async_graphql::Type for User {
     fn introspection_type_name(&self) -> std::borrow::Cow<'static, str> {
         Cow::Owned("user".to_string())
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserIdentifierQuery {
+    id: Option<Id>,
+    username: Option<String>,
+    email: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserFilterQuery {
+
 }
 
 

@@ -1,19 +1,16 @@
 use std::convert::{TryFrom, TryInto};
-use chrono::Duration;
-use sqlx::{PgPool, self, Database, Type, TypeInfo};
+use chrono::{Utc, NaiveDateTime, Duration};
+use uuid::Uuid;
+use sqlx::{PgPool, self};
 use serde::{Serialize, Deserialize};
 use api_db::{Id, Model};
 use crate::auth::jwt::*;
-use crate::{
-    models::{Session, User}
-};
+use crate::models::Session;
 use derive_more::{AsRef, AsMut, Display, From};
 use super::{Expiration};
 
 
-/// Until a more complex auth system is made,
-/// both tokens will just be the JWT
-///
+/// Until a more complex auth system is made,both tokens will just be the JWT
 #[derive(sqlx::Type, PartialEq, Debug, Clone, Serialize, Deserialize, From, AsRef, AsMut, Display)]
 #[sqlx(transparent, type_name = "session_token")]
 pub struct SessionToken(String);
@@ -26,10 +23,8 @@ pub struct AccessToken(String);
 #[async_trait::async_trait]
 pub trait Token {
 
-    #[inline]
     fn new(token: String) -> Self;
 
-    #[inline]
     fn nil() -> Self;
 
 }
@@ -89,8 +84,8 @@ impl AccessToken {
 
     pub fn is_expired(self) -> anyhow::Result<bool> {
         let claims = self.decode()?;
-        let exp = chrono::NaiveDateTime::from_timestamp(claims.exp, 0);
-        if exp - chrono::Utc::now().naive_utc() < Duration::zero() {
+        let exp = NaiveDateTime::from_timestamp(claims.exp, 0);
+        if exp - Utc::now().naive_utc() < Duration::zero() {
             Ok(true)
         } else {
             Ok(false)
@@ -108,7 +103,7 @@ impl AccessToken {
 impl Default for SessionToken {
     #[inline]
     fn default() -> Self {
-        Self(uuid::Uuid::new_v4().to_string())
+        Self(Uuid::new_v4().to_string())
     }
 }
 
@@ -119,7 +114,7 @@ pub struct RefreshToken(String);
 impl Default for RefreshToken {
     #[inline]
     fn default() -> Self {
-        RefreshToken(uuid::Uuid::new_v4().to_string())
+        RefreshToken(Uuid::new_v4().to_string())
     }
 }
 

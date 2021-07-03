@@ -42,6 +42,14 @@ pub enum Gender {
     Male, Female, Other, PreferNotToSay,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ApiKeys {
+    token: String,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    master: Option<String>,
+}
+
 impl Default for Gender {
     #[inline]
     fn default() -> Self {
@@ -81,15 +89,9 @@ pub fn private() -> bool {
 }
 
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct ApiKeys {
-    token: String,
-    #[serde(default, skip_serializing_if="Option::is_none")]
-    master: Option<String>,
-}
 
 impl ToString for Status {
+    #[inline]
     fn to_string(&self) -> String {
         match self {
             &Status::Active => "Active".to_string(),

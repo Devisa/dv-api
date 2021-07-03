@@ -1,4 +1,6 @@
 // pub mod redis;
+pub mod api;
+
 use api_db::{Db, Model, Id};
 use api_common::types::{
     time::{ Expiration, ExpirationQuery },
@@ -17,20 +19,12 @@ pub fn routes(cfg: &mut ServiceConfig) {
             .route(web::post().to(add_session))
             .route(web::delete().to(delete_all))
         )
-        .service(web::scope("/api").configure(api_session_routes))
+        .service(web::scope("/api").configure(api::routes))
         .service(web::scope("/id/{id}").configure(routes_id))
         .service(web::scope("/userid/{user_id}").configure(routes_user_id));
         // .service(web::scope("/redis").configure(redis::routes));
 }
 
-pub fn api_session_routes(cfg: &mut ServiceConfig) {
-    cfg
-        .service(web::resource("")
-            .route(web::get().to(get_all_api_sessions))
-            .route(web::post().to(new_api_session))
-            .route(web::delete().to(clear_api_sessions))
-        );
-}
 pub fn routes_id(cfg: &mut ServiceConfig) {
     cfg
         .service(web::resource("")
@@ -143,16 +137,6 @@ pub async fn delete_by_id(db: Data<Db>, id: Path<Id>) -> impl Responder {
 }
 pub async fn update_by_id(db: Data<Db>, user_id: Path<Id>) -> impl Responder {
     format!("PUT /user/session/{}", &user_id)
-}
-pub async fn get_all_api_sessions(db: Data<Db>, user_id: Path<Id>) -> crate::ApiResult<impl Responder> {
-    Ok(format!("PUT /user/session/{}", &user_id))
-}
-
-pub async fn new_api_session(db: Data<Db>, user_id: Path<Id>) -> crate::ApiResult<impl Responder> {
-    Ok(format!("PUT /user/session/{}", &user_id))
-}
-pub async fn clear_api_sessions(db: Data<Db>, user_id: Path<Id>) -> crate::ApiResult<impl Responder> {
-    Ok(format!("PUT /user/session/{}", &user_id))
 }
 
 #[cfg(test)]

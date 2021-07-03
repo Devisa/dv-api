@@ -1,4 +1,5 @@
 use super::User;
+use uuid::Uuid;
 use pwhash::bcrypt::{BcryptSetup, BcryptVariant, self};
 use serde::{Serialize, Deserialize};
 use sqlx::{FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}, postgres::PgPool};
@@ -7,6 +8,7 @@ use crate::types::{auth::{Provider, ProviderType}, now, AccessToken, SessionToke
 use super::{Profile, Account,};
 
 #[derive(PartialOrd,  Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+#[sqlx(rename_all = "snake_case")]
 pub struct Credentials {
     #[serde(default = "Id::gen")]
     pub id: Id,
@@ -114,19 +116,6 @@ impl Credentials {
             .expect("Could not hash password")
     }
 
-    /* pub async fn delete_by_id(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
-        let acct = sqlx::query_as::<Postgres, Self>("DELETE FROM credentials WHERE id = $1 RETURNING *")
-            .bind(id)
-            .fetch_optional(db).await?;
-        Ok(acct)
-    }
-
-    pub async fn get_all(db: &PgPool) -> anyhow::Result<Vec<Self>> {
-        let creds = sqlx::query_as::<Postgres, Self>("SELECT * FROM credentials")
-            .fetch_all(db).await?;
-        Ok(creds)
-    }
-    */
     pub async fn get_by_user_id(db: &PgPool, user_id: Id) -> anyhow::Result<Option<Self>> {
         let creds = sqlx::query_as::<Postgres, Self>("SELECT * FROM credentials WHERE user_id = $1")
             .bind(user_id)
@@ -149,22 +138,25 @@ impl Credentials {
     }
 
 
-    pub async fn verify(db: &PgPool, username: &str, password: &str) -> anyhow::Result<Credentials> {
+    pub async fn verify(db: &PgPool, username: &str, password: &str)
+        -> anyhow::Result<Credentials>
+    {
         match sqlx::query_as::<Postgres, Credentials>("SELECT * FROM credentials WHERE username = $1")
             .bind(&username)
-            .fetch_one(db).await {
-                Ok(user) => {
-                    if bcrypt::verify(password, &user.password) {
-                        Ok(user)
-                    } else {
-                        Err(anyhow::anyhow!("The username and/or password were incorrect"))
-                    }
+            .fetch_one(db).await
+        {
+            Ok(user) => {
+                if bcrypt::verify(password, &user.password) {
+                    Ok(user)
+                } else {
+                    Err(anyhow::anyhow!("The username and/or password were incorrect"))
                 }
-                Err(e) => {
-                    Err(anyhow::anyhow!("User with that username does not exist {}", e))
-                }
-
             }
+            Err(e) => {
+                Err(anyhow::anyhow!("User with that username does not exist {}", e))
+            }
+
+        }
     }
 
 }
@@ -215,8 +207,7 @@ impl CredentialsSignup {
     ///     *In that order* -> VerificationRequest to confirm email
     ///     -> UserLevel for gamification element
     pub async fn signup_credentials(self, db: &PgPool) -> sqlx::Result<User> {
-        let user_id: uuid::Uuid = uuid::Uuid::new_v4();
-        let cred_id: uuid::Uuid = uuid::Uuid::new_v4();
+        let (user_id, cred_id) = ( Uuid::new_v4(), Uuid::new_v4() );
         let user: User = User {
             id: Id::new(user_id),
             name: Some(self.name),

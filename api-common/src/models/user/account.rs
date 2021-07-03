@@ -9,6 +9,7 @@ use serde::{Serialize, Deserialize};
 
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+#[sqlx(rename_all = "snake_case")]
 pub struct Account {
     #[serde(default = "Id::gen")]
     pub id: Id,

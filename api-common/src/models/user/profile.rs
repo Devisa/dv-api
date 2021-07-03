@@ -1,7 +1,6 @@
 use crate::types::{Gender, Role, now, GroupRole};
 use api_db::{Db, Id};
 use chrono::NaiveDate;
-use url::Url;
 use super::Model;
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -11,6 +10,7 @@ use sqlx::{
 
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+#[sqlx(rename_all = "snake_case")]
 pub struct Profile {
     #[serde(default = "Id::gen")]
     pub id: Id,

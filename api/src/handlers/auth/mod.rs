@@ -25,6 +25,9 @@ use api_common::{
 
 pub fn routes(cfg: &mut ServiceConfig) {
     cfg
+        .route("/login", web::to(login))
+        .route("/logout", web::to(logout))
+        .service(web::scope("/creds").configure(credentials::routes))
         .service(web::resource("/sess")
             .route(web::get().to(get_apisessions))
             .route(web::post().to(new_apisession))
@@ -34,12 +37,6 @@ pub fn routes(cfg: &mut ServiceConfig) {
             .route(web::get().to(get_jwt))
             .route(web::post().to(refresh_jwt))
         )
-        .service(web::scope("/login")
-            .route("", web::post().to(login))
-        )
-        .service(web::scope("/logout")
-            .route("", web::post().to(logout))
-        )
         .service(web::scope("/check")
             .route("", web::get().to(check_auth))
             .route("", web::post().to(check_token))
@@ -47,7 +44,6 @@ pub fn routes(cfg: &mut ServiceConfig) {
         .service(web::scope("/token")
             .route("", web::get().to(get_session_token))
             )
-        .service(web::scope("/creds").configure(credentials::routes))
         .service(web::scope("/signup")
             .route("", web::post().to(signup_full))
             // .route("/credentials", web::post().to(signup_credentials))
@@ -176,8 +172,6 @@ pub async fn check_token(db: Data<Db>, req: HttpRequest) -> impl Responder {
                     .insert_header(("dvsa-auth-valid", true.to_string()))
                     .json(&decoded)
             }
-
-
         },
         None => {
             respond::not_found("No access token found in cookies")

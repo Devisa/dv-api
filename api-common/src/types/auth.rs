@@ -1,9 +1,6 @@
 use api_db::Id;
 use serde::{Serialize, Deserialize};
-use crate::
-    models::{
-        Account,
-    };
+use crate::models::Account;
 #[derive(sqlx::Type, Serialize, Deserialize, PartialEq, PartialOrd, Clone, Debug)]
 #[sqlx(type_name = "jwt")]
 pub struct JWT(String);
@@ -21,7 +18,7 @@ pub enum ProviderType {
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[sqlx(type_name = "provider_id", rename_all = "lowercase")]
+#[sqlx(type_name = "provider_id", rename_all = "snake_case")]
 pub enum Provider {
     Devisa, Google, GitHub, GitLab, Facebook, LinkedIn, Twitter
 }
@@ -32,7 +29,7 @@ impl Provider {
     }
 }
 impl ProviderType {
-    pub fn new_account(&self, user_id: Id, provider_account_id: Id) -> crate::models::Account {
+    pub fn new_account(&self, user_id: Id, provider_account_id: Id) -> Account {
         Account::default()
         /* match self {
             Self::Credentials => A,

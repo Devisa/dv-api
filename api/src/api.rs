@@ -4,6 +4,7 @@ use crate::{
     handlers::{self, graphql::{SubscriptionRoot, QueryRoot, MySchema}},
     middleware::cors::builder::Cors};
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use actix_session::CookieSession;
 use async_graphql::{EmptyMutation, Schema, };
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, get, web,
@@ -31,14 +32,6 @@ impl Api {
 
     pub async fn run(self) -> std::io::Result<()> {
         std::env::set_var("RUST_LOG", "actix_server=infoo,actix_web=trace,actix_redis=trace");
-        /* let env = env_logger::Env::default()
-            .filter_or("MY_LOG_LEVEL", "info")
-            .write_style_or("MY_LOG_STYLE", "always");
-        env_logger::Builder::from_env(env).init(); */
-        /* let _collector = tracing_subscriber::fmt()
-            .try_init()
-            .expect("Could not initialize tracing subscriber"); */
-
         let port = self.ctx.config.port;
         let schema = Schema::build(QueryRoot, EmptyMutation, SubscriptionRoot)
             .data(self.ctx.db.pool.clone())
@@ -50,8 +43,14 @@ impl Api {
         tracing::debug!("Running server on port {}", &port);
         let server = HttpServer::new(move || {
             App::new()
-                // .wrap(Cors::permissive())
-                // .wrap(schema.clone())
+                .wrap(Condition::new(true, CookieSession::signed(&[0; 32])
+                        .path("/")
+                        .domain("devisa.io")
+                        .same_site(actix_web::cookie::SameSite::None)
+                        .name("dvsa-cookie-sess")
+                        .secure(false)
+                        .max_age_time(time::Duration::seconds(3600))
+                ))
                 .wrap(Condition::new(true, Cors::permissive()))
                 .wrap(Condition::new(true, NormalizePath::default()))
                 .wrap(Compress::default())
@@ -82,41 +81,25 @@ async fn health() -> impl actix_web::Responder {
 mod test {
     use super::*;
     use actix_web::{http, body, web, App, test, dev::Service};
-    use chrono::Utc;
-    // use super::handlers::{EchoObj, echo};
 
-    fn init_logger() {
-        let _ = env_logger::builder().is_test(true).try_init();
-            // .filter_level(log::LevelFilter::max())
-    }
-
-    /* #[actix_rt::test]
+    #[actix_rt::test]
     async fn health_check() -> actix_web::Result<()> {
-        init_logger();
-        log::info!("HEALTH CHECK TEST. Running...");
-        log::debug!("Beginning test.");
         let mut app = test::init_service(
-            App::new().service(handlers::echo)
+            App::new().service(handlers::dict)
         ).await;
         let req = test::TestRequest::post()
             .uri("/")
-            .set_json(&EchoObj {
-                data: String::from("health check object"),
-                time: Utc::now(),
-            })
+            .set_json(&api_common::models::User::default())
             .to_request();
         let resp = app.call(req).await.unwrap();
-        let body = resp.response().body().as_ref();
+        let body = resp.response().body();
         assert!(body.is_some());
         Ok(())
-    } */
+    }
 
-    // #[actix_rt::test]
-    // async fn index_check() -> actix_web::Result<()> {
-    //     init_logger();
-    //     log::info!("RUNNING index_check TEST NOW...");
-    //     log::debug!("Beginning test.");
-    //     assert_eq!(3, 2);
-    //     Ok(())
-    // }
+    #[actix_rt::test]
+    async fn index_check() -> actix_web::Result<()> {
+        assert_eq!(3, 2);
+        Ok(())
+    }
 }
