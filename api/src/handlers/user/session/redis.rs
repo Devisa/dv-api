@@ -1,7 +1,7 @@
 use crate::util::respond;
 use redis::AsyncCommands;
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::StatusCode, post, web::{self, ServiceConfig}};
-use crate::actors::redis::RedisActor;
+// use crate::actors::redis::RedisActor;
 use serde::{Serialize, Deserialize};
 
 pub fn routes(cfg: &mut ServiceConfig) {

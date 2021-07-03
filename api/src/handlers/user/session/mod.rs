@@ -1,4 +1,4 @@
-pub mod redis;
+// pub mod redis;
 use api_db::{Db, Model, Id};
 use api_common::types::{
     time::{ Expiration, ExpirationQuery },
@@ -19,8 +19,8 @@ pub fn routes(cfg: &mut ServiceConfig) {
         )
         .service(web::scope("/api").configure(api_session_routes))
         .service(web::scope("/id/{id}").configure(routes_id))
-        .service(web::scope("/userid/{user_id}").configure(routes_user_id))
-        .service(web::scope("/redis").configure(redis::routes));
+        .service(web::scope("/userid/{user_id}").configure(routes_user_id));
+        // .service(web::scope("/redis").configure(redis::routes));
 }
 
 pub fn api_session_routes(cfg: &mut ServiceConfig) {

@@ -261,7 +261,7 @@ mod tests {
         let acct_out = Account::get_by_provider_account_id(&db.clone().pool, creds_out.clone().id)
             .await?.unwrap();
         println!("Created account {:?}", &acct_out.clone());
-        assert_eq!(acct_out.provider_type, "credentials".to_string());
+        assert_eq!(acct_out.provider_type, ProviderType::Credentials);
         assert_eq!(acct_out.provider_id, Provider::Devisa);
         assert_eq!(acct_out.provider_account_id, creds_out.clone().id);
         assert_eq!(acct_out.user_id, user_out.clone().id);

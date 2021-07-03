@@ -86,6 +86,19 @@ impl Default for User {
     }
 }
 
+impl Default for UserIn {
+    fn default() -> Self {
+        UserIn{
+            name: None,
+            image: None,
+            email: String::new(),
+            updated_at: now(),
+            created_at: now(),
+            email_verified: None,
+        }
+    }
+}
+
 impl From<UserIn> for User {
     fn from(user: UserIn) -> Self {
         User {
