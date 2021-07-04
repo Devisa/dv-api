@@ -15,9 +15,9 @@ pub use types::{
     auth::{Provider, ProviderType},
     token::{self, Token, AccessToken, RefreshToken, SessionToken}
 };
-pub use models::Model;
 pub use error::DiLibError;
 pub use rel::{Linked, LinkedTo};
+pub use models::{Model, ModelRoutes};
 pub use db::Db;
 
 

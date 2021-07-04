@@ -1,12 +1,10 @@
-use crate::{
-    models::{Credentials, User},
-    query::datetime::DateFilter,
-    types::{
+use actix_web::web::ServiceConfig;
+use crate::{models::{Credentials, User}, query::datetime::DateFilter, types::{
         Expiration, RefreshToken,
         auth::{Provider, ProviderType},
         now,  token::AccessToken
     }};
-use crate::{Model, Id};
+use crate::{ModelRoutes, Model, Id};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::NaiveDateTime };
 use serde::{Serialize, Deserialize};
 
@@ -101,6 +99,12 @@ impl Model for Account {
             .bind(self.updated_at)
             .fetch_one(db).await?;
         Ok(acct)
+    }
+}
+#[async_trait::async_trait]
+impl ModelRoutes for Account {
+    fn model_routes(cfg: &mut ServiceConfig) {
+        cfg;
     }
 }
 

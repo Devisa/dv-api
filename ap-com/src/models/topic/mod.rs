@@ -1,4 +1,5 @@
 use uuid::Uuid;
+use actix_web::web::ServiceConfig;
 use actix::prelude::*;
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -9,7 +10,7 @@ use sqlx::{
 use crate::{
     types::{Id, Status, now, private, Feeling},
     models::{
-        Model,
+        Model, ModelRoutes,
         book::topic::TopicBook,
         post::{Post, TopicPost},
     }
@@ -81,6 +82,16 @@ impl Model for Topic {
             .bind(&self.description)
             .fetch_one(db).await?;
         Ok(top)
+    }
+}
+
+#[async_trait::async_trait]
+impl ModelRoutes for Topic {
+    #[inline]
+    fn path() -> String { String::from("/topic") }
+
+    fn model_routes(cfg: &mut ServiceConfig) {
+        cfg;
     }
 }
 

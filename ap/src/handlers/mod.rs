@@ -26,7 +26,11 @@ use actix_web::{
 };
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
-
+use ap_com::models::{
+        Model, ModelRoutes,
+        User, Session, Credentials, VerificationRequest, Profile,
+        Account, Topic, task::Task,
+};
 use crate::{db::Db, util::respond};
 
 pub fn routes(cfg: &mut ServiceConfig) {
@@ -50,6 +54,17 @@ pub fn routes(cfg: &mut ServiceConfig) {
         // .service(web::scope("/rt").configure(rt::routes))
         .service(web::scope("/graphqlql").configure(graphql::routes))
         .service(web::scope("/topic").configure(topic::routes));
+}
+
+pub fn model_routes(cfg: &mut ServiceConfig) {
+    cfg
+        .service(User::service())
+        .service(Task::service())
+        .service(Session::service())
+        .service(Account::service())
+        .service(Profile::service())
+        .service(Credentials::service());
+
 }
 
 

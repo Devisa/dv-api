@@ -60,7 +60,8 @@ impl Api {
                 .data(ApiSession::default())
                 .data(self.ctx.db.clone())
                 .data(self.ctx.redis.clone())
-                .configure(handlers::routes)
+                // .configure(handlers::routes)
+                .configure(handlers::model_routes)
         })
             .bind(format!("0.0.0.0:{}", &port))?
             .run().await?;

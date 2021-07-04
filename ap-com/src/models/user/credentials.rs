@@ -1,9 +1,10 @@
+use actix_web::web::ServiceConfig;
 use super::User;
 use uuid::Uuid;
 use pwhash::bcrypt::{BcryptSetup, BcryptVariant, self};
 use serde::{Serialize, Deserialize};
 use sqlx::{FromRow, Postgres, postgres::PgPool};
-use crate::{Id, Model,};
+use crate::{Id, Model, models::ModelRoutes};
 use super::{Profile, Account,};
 
 #[derive(PartialOrd,  Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
@@ -43,6 +44,12 @@ impl Model for Credentials {
         Ok(res)
     }
 
+}
+#[async_trait::async_trait]
+impl ModelRoutes for Credentials {
+    fn model_routes(cfg: &mut ServiceConfig) {
+        cfg;
+    }
 }
 
 impl CredentialsIn {

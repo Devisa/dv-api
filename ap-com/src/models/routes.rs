@@ -1,16 +1,6 @@
-pub mod session;
-pub mod http;
-pub mod user;
-pub mod credentials;
-pub mod rpc;
-
-use actix_web::{Responder, web::{self, Json, Path, ServiceConfig},  web::Data, HttpResponse};
-use session::{ ApiSession, SessionInfo, SessionIn };
-use ap_com::{Db, Model, Id};
-use crate::util::respond;
+use actix_web::{HttpResponse, Responder, Scope, web::{self, Json, Path, ServiceConfig}, web::Data};
+use crate::{util::respond, Db, Model, Id};
 use serde::{Serialize, Deserialize};
-
-use crate::ApiResult;
 
 //TODO require responder trait bound to customize responses per model?
 /// A trait which can be applied to structs implementing the Model trait,
@@ -21,8 +11,14 @@ where
     for<'a> Self: 'static + Model + std::fmt::Debug + PartialEq + Serialize + Deserialize<'a>
 {
 
-    /// Basic, fundamental routes and corresponding handlers common among
-    ///     all model types (i.d. delete all, get by id, etc.)
+    fn path() -> String {
+        let mut path = String::new();
+        path.push('/');
+        path.push_str(Self::table().as_str());
+        path.pop();
+        path.to_string()
+    }
+
     fn routes(cfg: &mut ServiceConfig) {
         cfg
             .service(web::scope("").configure(Self::model_routes))
@@ -38,43 +34,46 @@ where
             );
     }
 
-    /// Model-specific route handlers for the implemented model
-    fn model_routes(cfg: &mut ServiceConfig) {
-        cfg;
+    fn model_routes(cfg: &mut ServiceConfig);
+
+    /// The service which encompasses all routes specified in the base trait and
+    ///     in the model implementation of the model_routes() method
+    fn service() -> Scope {
+        web::scope(Self::path().as_str()).configure(Self::routes)
     }
 
-    async fn service_get_all(db: Data<Db>) -> ApiResult<HttpResponse> {
+    async fn service_get_all(db: Data<Db>) -> actix_web::Result<HttpResponse> {
         match Self::get_all(&db.pool).await {
             Ok(model) => Ok(respond::ok(model)),
             Err(e) => Ok(respond::err(e)),
         }
     }
-    async fn service_delete_all(db: Data<Db>) -> ApiResult<HttpResponse> {
+    async fn service_delete_all(db: Data<Db>) -> actix_web::Result<HttpResponse> {
         match Self::delete_all(&db.pool).await {
             Ok(model) => Ok(respond::ok(model)),
             Err(e) => Ok(respond::err(e)),
         }
     }
-    async fn service_delete_by_id(db: Data<Db>, id: Path<Id>) -> ApiResult<HttpResponse> {
+    async fn service_delete_by_id(db: Data<Db>, id: Path<Id>) -> actix_web::Result<HttpResponse> {
         match Self::delete_by_id(&db.pool, id.into_inner()).await {
             Ok(model) => Ok(respond::ok(model)),
             Err(e) => Ok(respond::err(e)),
         }
     }
-    async fn service_add_new(db: Data<Db>, model: Json<Self>) -> ApiResult<HttpResponse> {
+    async fn service_add_new(db: Data<Db>, model: Json<Self>) -> actix_web::Result<HttpResponse> {
         match model.into_inner().insert(&db.pool).await {
             Ok(model) => Ok(respond::ok(model)),
             Err(e) => Ok(respond::err(e)),
         }
     }
-    async fn service_get_by_id(db: Data<Db>, id: Path<Id>) -> ApiResult<HttpResponse> {
+    async fn service_get_by_id(db: Data<Db>, id: Path<Id>) -> actix_web::Result<HttpResponse> {
         match Self::get(&db.pool, id.into_inner()).await {
             Ok(model) => Ok(respond::ok(model)),
             Err(e) => Ok(respond::err(e)),
         }
     }
     //TODO implement
-    async fn service_update(db: Data<Db>) -> ApiResult<HttpResponse> {
+    async fn service_update(db: Data<Db>) -> actix_web::Result<HttpResponse> {
         match Self::get_all(&db.pool).await {
             Ok(model) => Ok(respond::ok(model)),
             Err(e) => Ok(respond::err(e)),

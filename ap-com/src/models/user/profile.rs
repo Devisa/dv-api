@@ -1,5 +1,5 @@
 use crate::{Gender, Role, now, GroupRole};
-use crate::{Db, Id};
+use crate::{Db, Id, models::routes::ModelRoutes};
 use chrono::NaiveDate;
 use super::Model;
 use serde::{Serialize, Deserialize};
@@ -113,6 +113,14 @@ impl Model for Profile {
             .bind(&self.phone_number)
             .fetch_one(db).await?;
         Ok(self)
+    }
+}
+#[async_trait::async_trait]
+impl ModelRoutes for Profile {
+    fn path() -> String { String::from("/profile") }
+    fn model_routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            ;
     }
 }
 

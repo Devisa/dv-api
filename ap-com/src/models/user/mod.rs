@@ -36,6 +36,8 @@ use sqlx::{
     types::chrono::{NaiveDateTime, Utc}
 };
 
+use super::routes::ModelRoutes;
+
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq, )]
 #[sqlx(rename_all = "snake_case")]
@@ -374,6 +376,20 @@ pub struct UserFilterQuery {
 
 }
 
+#[async_trait::async_trait]
+impl ModelRoutes for User {
+
+    #[inline]
+    fn path() -> String { String::from("/user") }
+
+    fn model_routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            ;
+
+    }
+
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -432,3 +448,4 @@ mod tests {
     }
 
 }
+

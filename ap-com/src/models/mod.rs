@@ -1,3 +1,4 @@
+pub mod routes;
 pub mod action;
 pub mod automata;
 pub mod ai;
@@ -32,7 +33,13 @@ pub use group::Group;
 pub use topic::Topic;
 pub use action::Action;
 pub use automata::Automata;
-pub use messages::{DirectUserMessage, DirectGroupMessage, DirectTopicMessage, DirectGroupMessageReadReceipt};
+pub use messages::{
+    DirectUserMessage,
+    DirectGroupMessage,
+    DirectTopicMessage,
+    DirectGroupMessageReadReceipt
+};
+pub use routes::ModelRoutes;
 // pub use learn::LearningUnit;
 // pub use book::{UserBook, RecordBook, GroupBook, TopicBook};
 // pub use condition::Condition;

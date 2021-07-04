@@ -1,4 +1,5 @@
-use crate::{Model, Id};
+use crate::{Model, Id, models::ModelRoutes};
+use actix_web::web::ServiceConfig;
 use chrono::Duration;
 use crate::{token::{AccessToken, SessionToken, Token}, Expiration, Status, now, private};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
@@ -41,6 +42,12 @@ impl Model for Session {
         Ok(res)
     }
 
+}
+#[async_trait::async_trait]
+impl ModelRoutes for Session {
+    fn model_routes(cfg: &mut ServiceConfig) {
+        cfg;
+    }
 }
 
 impl Default for Session {
