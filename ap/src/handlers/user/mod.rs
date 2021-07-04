@@ -31,6 +31,7 @@ pub fn routes(cfg: &mut ServiceConfig) {
         .service(web::resource("")
             .route(web::get().to(get_all))
             .route(web::post().to(new_user))
+            .route(web::delete().to(clear_users))
             .route(web::put().to(generate_fake_users))
         )
         .service(web::scope("/gen").configure(gen_user_routes))
@@ -113,6 +114,12 @@ pub async fn generate_fake_users(req: HttpRequest, db: Data<Db>) -> impl Respond
 }
 pub async fn get_all(db: Data<Db>) -> impl Responder {
     match User::get_all(&db.pool).await {
+        Ok(users) => respond::ok(users),
+        Err(e) => respond::err(e),
+    }
+}
+pub async fn clear_users(db: Data<Db>) -> impl Responder {
+    match User::delete_all(&db.pool).await {
         Ok(users) => respond::ok(users),
         Err(e) => respond::err(e),
     }

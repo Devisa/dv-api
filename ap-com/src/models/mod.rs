@@ -103,12 +103,25 @@ where
         Ok(res)
     }
 
-    async fn delete_by_id(self, db: &PgPool, kind: &str, id: Id) -> sqlx::Result<Vec<Self>> {
-        let res = sqlx::query_as::<Postgres, Self>(&format!("DELETE FROM {} WHERE {}_id = $1", Self::table(), kind))
+    async fn delete_by_id(db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
+        let res = sqlx::query_as::<Postgres, Self>(&format!("DELETE FROM {} WHERE id = $1", Self::table()))
             .bind(id)
             .fetch_all(db).await?;
         Ok(res)
     }
+    async fn delete_by_id_kind<K: Model>(db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
+        let res = sqlx::query_as::<Postgres, Self>(&format!("DELETE FROM {} WHERE {} = $1", Self::table(), K::table()))
+            .bind(id)
+            .fetch_all(db).await?;
+        Ok(res)
+    }
+    async fn get_by_id_kind<K: Model>(db: &PgPool, id: Id) -> sqlx::Result<Vec<Self>> {
+        let res = sqlx::query_as::<Postgres, Self>(&format!("SELECT * FROM {} WHERE {} = $1", Self::table(), K::table()))
+            .bind(id)
+            .fetch_all(db).await?;
+        Ok(res)
+    }
+    // TODO get from other table where Self::id_str() = ?
 
     async fn get_after(self, db: &PgPool, datetime: NaiveDateTime) -> sqlx::Result<Vec<Self>> {
         /* let res = sqlx::query_as::<Postgres, Self>(&format!("DELETE FROM {} WHERE {}_id = $1", Self::table(), kind))
