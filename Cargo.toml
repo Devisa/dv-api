@@ -7,26 +7,25 @@ edition = "2018"
 default-run = "di-api"
 
 [lib]
-name = "api"
-path = "api/src/lib.rs"
+name = "di_api"
+path = "ap/src/lib.rs"
 
 [[bin]]
 name = "di-api"
-path = "api/src/bin/server.rs"
+path = "ap/src/bin/di-api.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.actix-web]
-version = "=4.0.0-beta.8"
+version = ">=4.0.0-beta.8"
 features = ["cookies",  "rustls", "secure-cookies" ]
 
 [dependencies]
-api-common = { path = "./api-common/" }
-api-lang = { path = "./api-lang/" }
-api-rt = { path = "./api-rt/" }
-api-redis = { path = "./api-redis/" }
-api-proto = { path = "./api-proto/", optional = true }
-api-db = { path = "./api-db/" }
+ap-com = { path = "./ap-com/" }
+ap-lang = { path = "./ap-lang/" }
+ap-rt = { path = "./ap-rt/" }
+ap-red = { path = "./ap-red/" }
+ap-rpc = { path = "./ap-rpc/", optional = true }
 actix = "*"
 serde = "1.0.125"
 async-trait = "*"
@@ -60,7 +59,8 @@ actix-web-prom = "0.5.1"
 sentry = "0.22.0"
 sentry-actix = "0.22.0"
 tracing = "0.1.26"
-actix-session = { version = "=0.5.0-beta.2" }
+actix-session = { version = ">=0.5.0-beta.2" }
+actix-redis = { version = ">=0.10.0-beta.2", features = ["web"] }
 # actix-cors = "=0.6.0-beta.2"
 # actix-service = { version = "2.0.0" }
 # actix-web-actors = { git = "" }
@@ -74,7 +74,6 @@ actix-session = { version = "=0.5.0-beta.2" }
 # tracing-actix-web = "0.4.0-beta.7"
 # actix-identity = { version = "=0.4.0-beta.2" }
 # actix-web-httpauth = "=0.6.0-beta.2"
-# actix-redis = { version = "0.10.0-beta.1", features = ["web"] }
 
 
 # tracing-actix = "0.3.0"
@@ -134,7 +133,7 @@ features = ["env-filter", "registry", "fmt", "smallvec", "tracing-log", "json", 
 
 [features]
 default = [ "grpc" ]
-grpc = ["api-proto", "protobuf", "actix-protobuf"]
+grpc = ["ap-rpc", "protobuf", "actix-protobuf"]
 
 [dev-dependencies]
 # criterion = "0.3.4"
@@ -152,31 +151,31 @@ grpc = ["api-proto", "protobuf", "actix-protobuf"]
 [workspace]
 
 members = [
-  "./api/lib/api-gql",
-  "./api/lib/api-rpc",
-  "./api/lib/api-auth",
-  "./api/lib/api-search",
-  "./api/lib/api-channels",
-  "./api-rt",
-  "./api-common",
-  "./api-proto",
-  "./api-db",
-  "./api-redis",
-  "./api-lang",
+  "./ap/lib/ap-gql",
+  "./ap/lib/ap-rpc",
+  "./ap/lib/ap-auth",
+  "./ap/lib/ap-search",
+  "./ap/lib/ap-channel",
+  "./ap-exe",
+  "./ap-rt",
+  "./ap-com",
+  "./ap-rpc",
+  "./ap-red",
+  "./ap-lang",
 ]
 
 default-members = [
-  "./api/lib/api-gql",
-  "./api/lib/api-rpc",
-  "./api/lib/api-auth",
-  "./api/lib/api-search",
-  "./api/lib/api-channels",
-  "./api-rt",
-  "./api-common",
-  "./api-proto",
-  "./api-redis",
-  "./api-db",
-  "./api-lang",
+  "./ap/lib/ap-gql",
+  "./ap/lib/ap-rpc",
+  "./ap/lib/ap-auth",
+  "./ap/lib/ap-search",
+  "./ap/lib/ap-channel",
+  "./ap-exe",
+  "./ap-rt",
+  "./ap-com",
+  "./ap-rpc",
+  "./ap-red",
+  "./ap-lang",
 ]
 
 # [package]

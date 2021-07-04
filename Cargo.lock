@@ -279,6 +279,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-redis"
+version = "0.10.0-beta.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aef6ed7157107f839d8af97066df7261361843229bd22e73ab2bd028891af38c"
+dependencies = [
+ "actix 0.12.0",
+ "actix-rt 2.2.0",
+ "actix-service 2.0.0",
+ "actix-session",
+ "actix-tls 3.0.0-beta.5",
+ "actix-web 4.0.0-beta.8",
+ "backoff",
+ "derive_more",
+ "futures-core",
+ "log",
+ "rand 0.8.3",
+ "redis 0.19.0",
+ "redis-async",
+ "serde",
+ "serde_json",
+ "time 0.2.26",
+ "tokio 1.6.2",
+ "tokio-util 0.6.7",
+]
+
+[[package]]
 name = "actix-router"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -737,30 +763,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ansi_term"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
-dependencies = [
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15af2628f6890fe2609a3b91bef4c83450512802e59489f9c1cb1fa5df064a61"
 
 [[package]]
-name = "api-auth"
-version = "0.1.0"
-
-[[package]]
-name = "api-channels"
-version = "0.1.0"
-
-[[package]]
-name = "api-cloud"
+name = "ap-cloud"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -773,7 +782,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-common"
+name = "ap-com"
 version = "0.1.0"
 dependencies = [
  "actix 0.12.0",
@@ -781,10 +790,9 @@ dependencies = [
  "actix-rt 2.2.0",
  "actix-web 4.0.0-beta.8",
  "anyhow",
- "api-cloud",
- "api-data",
- "api-db",
- "api-http",
+ "ap-cloud",
+ "ap-data",
+ "ap-http",
  "async-graphql",
  "async-trait",
  "chrono",
@@ -794,6 +802,7 @@ dependencies = [
  "futures",
  "jsonwebtoken",
  "lettre",
+ "libsqlite3-sys",
  "log",
  "pwhash",
  "rand 0.8.3",
@@ -808,47 +817,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-data"
+name = "ap-data"
 version = "0.1.0"
 dependencies = [
  "actix 0.11.1",
- "petgraph",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "api-db"
+name = "ap-exe"
 version = "0.1.0"
 dependencies = [
- "actix-rt 2.2.0",
- "anyhow",
+ "actix 0.11.1",
  "async-trait",
- "derive_more",
- "libsqlite3-sys",
- "openssl",
- "rustls",
- "serde",
- "sqlx",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
- "uuid",
+ "chrono",
+ "crossbeam-queue",
 ]
 
 [[package]]
-name = "api-gql"
-version = "0.1.0"
-
-[[package]]
-name = "api-http"
+name = "ap-http"
 version = "0.1.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
-name = "api-lang"
+name = "ap-lang"
 version = "0.1.0"
 dependencies = [
  "lexical",
@@ -859,7 +854,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-proto"
+name = "ap-red"
+version = "0.1.0"
+dependencies = [
+ "actix 0.12.0",
+ "actix-rt 2.2.0",
+ "mobc",
+ "mobc-redis",
+ "redis 0.20.1",
+]
+
+[[package]]
+name = "ap-rpc"
 version = "0.1.0"
 dependencies = [
  "async-stream",
@@ -877,22 +883,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-redis"
-version = "0.1.0"
-dependencies = [
- "actix 0.12.0",
- "actix-rt 2.2.0",
- "mobc",
- "mobc-redis",
- "redis 0.20.1",
-]
-
-[[package]]
-name = "api-rpc"
-version = "0.1.0"
-
-[[package]]
-name = "api-rt"
+name = "ap-rt"
 version = "0.1.0"
 dependencies = [
  "async-stream",
@@ -916,6 +907,22 @@ dependencies = [
  "tonic-build",
  "warp",
 ]
+
+[[package]]
+name = "api-auth"
+version = "0.1.0"
+
+[[package]]
+name = "api-channels"
+version = "0.1.0"
+
+[[package]]
+name = "api-gql"
+version = "0.1.0"
+
+[[package]]
+name = "api-rpc"
+version = "0.1.0"
 
 [[package]]
 name = "api-search"
@@ -1112,6 +1119,16 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
+]
+
+[[package]]
+name = "backoff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "721c249ab59cbc483ad4294c9ee2671835c1e43e9ffc277e6b4ecfef733cfdc5"
+dependencies = [
+ "instant",
+ "rand 0.7.3",
 ]
 
 [[package]]
@@ -1625,17 +1642,17 @@ dependencies = [
  "actix-http 3.0.0-beta.8",
  "actix-multipart",
  "actix-protobuf",
+ "actix-redis",
  "actix-rt 2.2.0",
  "actix-session",
  "actix-web 4.0.0-beta.8",
  "actix-web-prom",
  "anyhow",
- "api-common",
- "api-db",
- "api-lang",
- "api-proto",
- "api-redis",
- "api-rt",
+ "ap-com",
+ "ap-lang",
+ "ap-red",
+ "ap-rpc",
+ "ap-rt",
  "async-graphql",
  "async-graphql-actix-web",
  "async-trait",
@@ -3141,8 +3158,6 @@ checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
 dependencies = [
  "fixedbitset",
  "indexmap",
- "serde",
- "serde_derive",
 ]
 
 [[package]]
@@ -3531,10 +3546,12 @@ dependencies = [
  "dtoa",
  "futures-util",
  "itoa",
+ "native-tls",
  "percent-encoding",
  "pin-project-lite 0.2.6",
  "sha1",
  "tokio 1.6.2",
+ "tokio-native-tls",
  "tokio-util 0.6.7",
  "url",
 ]
@@ -3557,6 +3574,21 @@ dependencies = [
  "tokio 1.6.2",
  "tokio-util 0.6.7",
  "url",
+]
+
+[[package]]
+name = "redis-async"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8f5a920ab6d700f442cadd6006a2a43f7ec0a5223065f3eaa517fc3fca6d2b3"
+dependencies = [
+ "bytes 1.0.1",
+ "futures-channel",
+ "futures-sink",
+ "futures-util",
+ "log",
+ "tokio 1.6.2",
+ "tokio-util 0.6.7",
 ]
 
 [[package]]
@@ -4902,8 +4934,6 @@ version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa5553bf0883ba7c9cbe493b085c29926bd41b66afc31ff72cf17ff4fb60dcd5"
 dependencies = [
- "ansi_term",
- "chrono",
  "lazy_static",
  "matchers",
  "parking_lot",
