@@ -1,6 +1,7 @@
 use actix::prelude::*;
+use actix_web::web::{get, Path, ServiceConfig};
 use uuid::Uuid;
-use crate::{Id, Status, now, private};
+use crate::{util::respond, Id,  Status, now, private};
 use crate::rel::link::{LinkedTo, Linked};
 use crate::models::{Model, Link};
 use serde::{Serialize, Deserialize};
@@ -96,10 +97,13 @@ impl Default for RecordItem {
 #[async_trait::async_trait]
 impl LinkedTo<Item> for Record {
     type LinkModel = RecordItem;
-}
-#[async_trait::async_trait]
-impl LinkedTo<Record> for Item {
-    type LinkModel = RecordItem;
+    #[inline]
+    fn path() -> String { String::from("/{record_id}/item") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|record_id: Path<Id>| respond::ok(format!("GET /record/{}/item/hi", &record_id))));
+    }
 }
 
 #[async_trait::async_trait]
@@ -118,6 +122,17 @@ impl Linked for RecordItem {
     fn link_id(self) -> Option<Id> { self.link_id }
     fn left_id(self) -> Id { self.record_id }
     fn right_id(self) -> Id { self.item_id }
+
+    /// Served at /record/{record_id}/item/{item_id}
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|id: Path<(Id, Id)>| {
+                let (record_id, item_id) = id.into_inner();
+                respond::ok(format!("GET /record/{}/item/{}/hi", &record_id, &item_id))
+            }
+            )
+        );
+    }
 }
 
 impl RecordItem {
@@ -131,7 +146,16 @@ impl RecordItem {
 
 #[async_trait::async_trait]
 impl Model for Record {
+    #[inline]
     fn table() -> String { String::from("records") }
+    #[inline]
+    fn path() -> String { String::from("/record") }
+    fn routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /record/hi".to_string())))
+            .service(<Record as LinkedTo<Item>>::scope())
+            .service(<RecordItem as Linked>::scope());
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_scalar("
@@ -151,8 +175,16 @@ impl Model for Record {
     }
 }
 #[async_trait::async_trait]
-impl super::Model for RecordItem {
+impl Model for RecordItem {
+    #[inline]
     fn table() -> String { String::from("record_items") }
+
+    #[inline]
+    fn path() -> String { String::from("/item") }
+
+    fn routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg;
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -179,19 +211,6 @@ impl Record {
             user_id, name, ..Default::default()
         }
     }
-
-    // pub async fn get_all(db: &PgPool) -> anyhow::Result<Vec<Self>> {
-    //     let res = sqlx::query_as::<Postgres, Record>("SELECT * FROM records")
-    //         .fetch_all(db).await?;
-    //     Ok(res)
-    // }
-
-    // pub async fn get(db: &PgPool, id: Id) -> anyhow::Result<Option<Self>> {
-    //     let res = sqlx::query_as::<Postgres, Record>("SELECT * FROM records WHERE id = $1")
-    //         .bind(id)
-    //         .fetch_optional(db).await?;
-    //     Ok(res)
-    // }
 
     pub async fn update_by_id(db: &PgPool, id: Id, r: Record)
         -> anyhow::Result<Self> {
@@ -225,14 +244,6 @@ impl Record {
             .fetch_all(db).await?;
         Ok(res)
     }
-
-    // pub async fn delete(db: &PgPool, id: Id) -> anyhow::Result<Uuid> {
-    //     let res = sqlx::query_scalar("DELETE FROM records WHERE id = $1 RETURNING id")
-    //         .bind(id)
-    //         .fetch_optional(db).await?;
-    //     Ok(res)
-    // }
-
 
     pub async fn add_new_item(self, db: &PgPool, item_name: String) -> anyhow::Result<Self> {
         let item = Item::new(item_name, self.clone().user_id).insert(&db).await?;

@@ -1,5 +1,6 @@
-use crate::{Gender, Role, now, GroupRole};
-use crate::{Db, Id, models::routes::ModelRoutes};
+use crate::{util::respond, Gender, Role, now, GroupRole};
+use crate::{Db, Id};
+use actix_web::{web::{self, get, ServiceConfig}, self};
 use chrono::NaiveDate;
 use super::Model;
 use serde::{Serialize, Deserialize};
@@ -61,7 +62,17 @@ pub struct Profile {
 #[async_trait::async_trait]
 impl Model for Profile {
 
+    #[inline]
     fn table() -> String { String::from("profiles") }
+
+    #[inline]
+    fn path() -> String { String::from("/profile") }
+
+    /// Served at "/user/profile"
+    fn routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /user/profile/hi".to_string())));
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -115,15 +126,6 @@ impl Model for Profile {
         Ok(self)
     }
 }
-#[async_trait::async_trait]
-impl ModelRoutes for Profile {
-    fn path() -> String { String::from("/profile") }
-    fn model_routes(cfg: &mut actix_web::web::ServiceConfig) {
-        cfg
-            ;
-    }
-}
-
 impl Default for Profile {
     fn default() -> Self {
         Profile {

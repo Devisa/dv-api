@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use actix_web::web::ServiceConfig;
+use actix_web::web::{self, Path, get, ServiceConfig};
 use actix::prelude::*;
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -7,14 +7,12 @@ use sqlx::{
     prelude::*, postgres::PgPool,
     types::chrono::{NaiveDateTime, Utc}
 };
-use crate::{
-    types::{Id, Status, now, private, Feeling},
-    models::{
-        Model, ModelRoutes,
+use crate::{Linked, LinkedTo, models::{
+        Model,
+        category::Category,
         book::topic::TopicBook,
-        post::{Post, TopicPost},
-    }
-};
+        post::Post,
+    }, types::{Id, Status, now, private, Feeling}, util::respond};
 
 #[derive(Debug, Clone, Serialize, Deserialize, )]
 pub struct ScoreRequest {
@@ -67,9 +65,76 @@ pub struct Topic {
     #[serde(default = "now")]
     pub updated_at: NaiveDateTime,
 }
+#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TopicPost {
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub post_id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub link_id: Option<Id>,
+    #[serde(default = "now")]
+    pub created_at: NaiveDateTime,
+    #[serde(default = "now")]
+    pub updated_at: NaiveDateTime,
+}
+/// LINK MODEL: Lists topic's categories, vice versa
+#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TopicCategory {
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::gen")]
+    pub user_id: Id,
+    #[serde(default = "Id::gen")]
+    pub category_id: Id,
+    #[serde(default = "Id::gen")]
+    pub topic_id: Id,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub link_id: Option<Id>,
+    pub score: f64,
+    #[serde(default = "now")]
+    pub created_at: NaiveDateTime,
+    #[serde(default = "now")]
+    pub updated_at: NaiveDateTime,
+}
+
+
+#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TopicVote {
+    #[serde(default = "Id::gen")]
+    pub id: Id,
+    #[serde(default = "Id::nil")]
+    pub user_id: Id,
+    #[serde(default = "Id::nil")]
+    pub topic_id: Id,
+    pub is_for: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub feeling: Option<Feeling>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default = "now")]
+    pub created_at: NaiveDateTime,
+    #[serde(default = "now")]
+    pub updated_at: NaiveDateTime,
+
+}
 
 #[async_trait::async_trait]
 impl Model for Topic {
+    #[inline]
+    fn path() -> String { String::from("/topic") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /topic/hi".to_string())))
+            .service(<TopicVote as Model>::scope())
+            .service(<Topic as LinkedTo<Category>>::scope())
+            .service(<TopicCategory as Linked>::scope())
+            .service(<TopicPost as Linked>::scope());
+
+    }
     #[inline]
     fn table() -> String { String::from("topics") }
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
@@ -85,35 +150,29 @@ impl Model for Topic {
     }
 }
 
-#[async_trait::async_trait]
-impl ModelRoutes for Topic {
-    #[inline]
-    fn path() -> String { String::from("/topic") }
-
-    fn model_routes(cfg: &mut ServiceConfig) {
-        cfg;
-    }
-}
-
-#[async_trait::async_trait]
-impl Model for Category {
-    #[inline]
-    fn table() -> String { String::from("categories") }
-    #[inline]
-    fn id_str() -> String { String::from("category_id") }
-    async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
-        let res =  sqlx::query_as::<Postgres, Self>("
-            INSERT INTO categories (id, name, description)
-            VALUES ($1, $2, $) RETURNING *")
-            .bind(&self.id)
-            .bind(&self.name)
-            .bind(&self.description)
-            .fetch_one(db).await?;
-        Ok(res)
+impl Default for TopicCategory {
+    fn default() -> Self {
+        Self {
+            link_id: None,
+            id: Id::gen(),
+            user_id: Id::nil(),
+            category_id: Id::nil(),
+            topic_id: Id::nil(),
+            score: 0.0,
+            updated_at: now(),
+            created_at: now(),
+        }
     }
 }
 #[async_trait::async_trait]
 impl Model for TopicCategory {
+    #[inline]
+    fn path() -> String { String::from("/category") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /topic/category/hi".to_string())));
+    }
     #[inline]
     fn table() -> String { String::from("topic_categories") }
     #[inline]
@@ -135,6 +194,15 @@ impl Model for TopicCategory {
 impl Model for TopicVote {
     #[inline]
     fn table() -> String { String::from("topic_votes") }
+
+    #[inline]
+    fn path() -> String { String::from("/vote") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /topic/vote/hi".to_string())));
+    }
+
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res =  sqlx::query_as::<Postgres, TopicVote>("
             INSERT INTO topic_votes (id, user_id,  topic_id, is_for, description, feeling)
@@ -150,55 +218,137 @@ impl Model for TopicVote {
     }
 }
 
-#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TopicCategory {
-    #[serde(default = "Id::gen")]
-    pub id: Id,
-    #[serde(default = "Id::gen")]
-    pub user_id: Id,
-    #[serde(default = "Id::gen")]
-    pub category_id: Id,
-    #[serde(default = "Id::gen")]
-    pub topic_id: Id,
-    pub score: f64,
-    #[serde(default = "now")]
-    pub created_at: NaiveDateTime,
-    #[serde(default = "now")]
-    pub updated_at: NaiveDateTime,
+#[async_trait::async_trait]
+impl LinkedTo<Category> for Topic {
+    type LinkModel = TopicCategory;
+
+    fn path() -> String { String::from("/{category_id}/category") }
+
+    /// Served at /topic/{topic_id}/category
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|id: Path<Id>| respond::ok(format!("GET /topic/{}/category/hi", &id))));
+    }
+}
+#[async_trait::async_trait]
+impl LinkedTo<Post> for Topic {
+    type LinkModel = TopicPost;
+
+    fn path() -> String { String::from("/{topic_id}/post") }
+
+    /// Served at /topic/{topic_id}/post
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|id: Path<Id>| respond::ok(format!("GET /topic/{}/post/hi", &id))));
+    }
 }
 
-#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct Category {
-    #[serde(default = "Id::gen")]
-    pub id: Id,
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default = "now")]
-    pub created_at: NaiveDateTime,
-    #[serde(default = "now")]
-    pub updated_at: NaiveDateTime,
+impl Default for TopicPost {
+    fn default() -> Self {
+        Self {
+            id: Id::gen(),
+            post_id: Id::nil(),
+            topic_id: Id::nil(),
+            link_id: None,
+            created_at: now(),
+            updated_at: now(),
+        }
+    }
 }
+impl TopicPost {
 
-#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TopicVote {
-    #[serde(default = "Id::gen")]
-    pub id: Id,
-    #[serde(default = "Id::nil")]
-    pub user_id: Id,
-    #[serde(default = "Id::nil")]
-    pub topic_id: Id,
-    pub is_for: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub feeling: Option<Feeling>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(default = "now")]
-    pub created_at: NaiveDateTime,
-    #[serde(default = "now")]
-    pub updated_at: NaiveDateTime,
+    pub fn new(post_id: Id, topic_id: Id, link_id: Option<Id>) -> Self {
+        Self {
+            id: Id::gen(),
+            post_id: Id::nil(),
+            topic_id: Id::nil(),
+            link_id: None,
+            created_at: now(),
+            updated_at: now(),
+        }
+    }
+}
+#[async_trait::async_trait]
+impl Model for TopicPost {
 
+    fn table() -> String { String::from("topic_posts") }
+
+    async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
+        let res = sqlx::query_as::<Postgres, Self>(
+           "INSERT INTO post_topics
+            (post_id, topic_id, link_id, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5) RETURNING id")
+            .bind(&self.post_id)
+            .bind(&self.topic_id)
+            .bind(&self.link_id)
+            .bind(&self.created_at)
+            .bind(&self.updated_at)
+            .fetch_one(db).await?;
+        Ok(res)
+
+    }
+}
+#[async_trait::async_trait]
+impl Linked for TopicCategory {
+    type Left = Topic;
+    type Right = Category;
+
+    fn link_id(self) -> Option<Id> {
+        self.link_id
+    }
+
+    fn path() -> String {
+        String::from("/{topic_id}/category/{category_id}")
+    }
+
+    /// Served at /topic/{topic_id}/category/{category_id}
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|id: Path<(Id, Id)>| {
+                let (topic_id, category_id) = id.into_inner();
+                respond::ok(format!("GET /topic/{}/category/{}/hi", &topic_id, &category_id))
+            }
+            )
+        );
+    }
+}
+#[async_trait::async_trait]
+impl Linked for TopicPost {
+    type Left = Topic;
+    type Right = Post;
+
+    fn link_id(self) -> Option<Id> {
+        self.link_id
+    }
+    fn left_id(self) -> Id {
+        self.topic_id
+    }
+    fn right_id(self) -> Id {
+        self.post_id
+    }
+    fn new_basic(left_id: Id, right_id: Id, link_id: Option<Id>) -> Self {
+        Self {
+            topic_id: left_id,
+            post_id: right_id,
+            link_id, ..Default::default()
+        }
+
+    }
+
+    fn path() -> String {
+        String::from("/{topic_id}/post/{post_id}")
+    }
+
+    /// Served at /topic/{topic_id}/post/{post_id}
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|id: Path<(Id, Id)>| {
+                let (topic_id, post_id) = id.into_inner();
+                respond::ok(format!("GET /topic/{}/post/{}/hi", &topic_id, &post_id))
+            }
+            )
+        );
+    }
 }
 
 impl Topic {
@@ -299,58 +449,6 @@ impl Topic {
     }
 }
 
-impl Category {
-
-    pub fn new(name: String, description: Option<String>) -> Self {
-        let cat = Self {
-            name, id: Id::gen(), description,
-            created_at: now(), updated_at: now()
-        };
-        cat
-    }
-
-
-    pub async fn get_all(db: &PgPool) -> sqlx::Result<Vec<Self>> {
-        let res = sqlx::query_as::<Postgres, Self>("SELECT * FROM categories")
-            .fetch_all(db).await?;
-        Ok(res)
-    }
-    pub async fn get_by_id(db: &PgPool, id: Id) -> sqlx::Result<Option<Self>> {
-        let res = sqlx::query_as::<Postgres, Self>("SELECT * FROM categories WHERE id = $1")
-            .bind(id)
-            .fetch_optional(db).await?;
-        Ok(res)
-    }
-    pub async fn delete_by_id(db: &PgPool, id: Id) -> sqlx::Result<Option<Id>> {
-        let res = sqlx::query_scalar("DELETE FROM categories WHERE id = $1 ")
-            .bind(id)
-            .fetch_optional(db).await?;
-        Ok(res)
-    }
-    pub async fn linked_to_topic(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Self>> {
-        let res = sqlx::query_as::<Postgres, Self>("
-            SELECT * FROM categories
-            INNER JOIN topic_categories
-            ON categories.id = topic_categories.category_id
-            WHERE topic_categories.topic_id = $1
-        ")
-            .bind(topic_id)
-            .fetch_all(db).await?;
-        Ok(res)
-    }
-    pub async fn get_posts(db: &PgPool, topic_id: Id) -> sqlx::Result<Vec<Topic>>
-    {
-        let res = sqlx::query_as::<Postgres, Topic>("
-            SELECT * FROM topics
-            INNER JOIN topic_posts ON posts.id = topic_posts.post_id
-            INNER JOIN topics on topics.id = topic_posts.topic_id
-            WHERE topics.id = $1
-        ")
-            .bind(topic_id)
-            .fetch_all(db).await?;
-        Ok(res)
-    }
-}
 
 impl TopicVote {
 
@@ -373,6 +471,7 @@ impl TopicCategory {
     pub fn new(user_id: Id, category_id: Id, topic_id: Id, score: Option<f64>) -> Self {
         Self {
             user_id,
+            link_id: None,
             category_id, topic_id, score: score.unwrap_or(0.0), id: Id::gen(),
             created_at: now(), updated_at: now()
         }

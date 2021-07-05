@@ -12,7 +12,7 @@ pub use status::{TaskStepExecStatus, TaskBookExecStatus};
 
 use actix::prelude::*;
 use actix_web::web::ServiceConfig;
-use crate::{Id, Db, Model, ModelRoutes};
+use crate::{Id, Db, Model};
 use derive_more::{AsRef, AsMut, Display, From};
 use serde::{Serialize, Deserialize};
 use chrono::NaiveDateTime;
@@ -42,6 +42,12 @@ pub struct Task {
 impl Model for Task {
     #[inline]
     fn table() -> String { "tasks".to_string() }
+    #[inline]
+    fn path() -> String { String::from("/task") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg;
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -64,17 +70,6 @@ impl Model for Task {
 
     }
 }
-#[async_trait::async_trait]
-impl ModelRoutes for Task {
-    #[inline]
-    fn path() -> String { String::from("/task") }
-
-    fn model_routes(cfg: &mut ServiceConfig) {
-        cfg;
-    }
-}
-
-
 
 impl Default for Task {
     #[inline]

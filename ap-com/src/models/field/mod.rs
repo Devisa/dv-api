@@ -1,15 +1,18 @@
 pub mod value;
 pub mod target;
 
+use actix_web::web::{ServiceConfig, Path, get};
 use uuid::Uuid;
 use actix::prelude::*;
-use crate::{Id, Status, now, private};
+use crate::{models::item::ItemField, Id, LinkedTo, Status, now, private, util::respond};
 use serde::{Serialize, Deserialize};
 use crate::models::Model;
 use sqlx::{
     FromRow, Postgres, postgres::PgPool,
     types::chrono::{NaiveDateTime, Utc}
 };
+
+use super::Item;
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Field {
@@ -35,7 +38,17 @@ pub struct Field {
 #[async_trait::async_trait]
 impl Model for Field {
 
+    #[inline]
     fn table() -> String { String::from("fields") }
+
+    #[inline]
+    fn path() -> String { String::from("/field") }
+
+    fn routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /field/hi".to_string())))
+            .service(<Field as LinkedTo<Item>>::scope());
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -132,4 +145,17 @@ impl Field {
         Self { name, kind, user_id, ..Default::default() }
     }
 
+}
+
+#[async_trait::async_trait]
+impl LinkedTo<Item> for Field {
+    type LinkModel = ItemField;
+
+    #[inline]
+    fn path() -> String { String::from("/{field_id}/item") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|field_id: Path<Id>| respond::ok(format!("GET /field/{}/item/hi", &field_id))));
+    }
 }

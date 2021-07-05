@@ -22,9 +22,11 @@ pub use self::{
 use std::borrow::Cow;
 use serde::{Serialize, Deserialize};
 use actix::prelude::*;
+use actix_web::{HttpResponse, web::{self, Path, ServiceConfig, get, post}};
 use rand::{distributions::{Uniform, Alphanumeric}, Rng, prelude::Distribution};
-use crate::{Id, Model, Db};
+use crate::{Linked, LinkedTo, Id, Model, Db};
 use crate::{
+    util::respond,
     types::now,
     models::{
         Item, Record, Field, Group,
@@ -36,7 +38,7 @@ use sqlx::{
     types::chrono::{NaiveDateTime, Utc}
 };
 
-use super::routes::ModelRoutes;
+use super::group::GroupUser;
 
 
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq, )]
@@ -137,6 +139,22 @@ impl Model for User {
 
     #[inline]
     fn id(self) -> Id { self.id }
+
+    #[inline]
+    fn path() -> String { String::from("/user") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /user/hi".to_string())))
+            .service(<User as LinkedTo<Group>>::scope())
+            .service(Session::scope())
+            .service(VerificationRequest::scope())
+            .service(Account::scope())
+            .service(Credentials::scope())
+            .service(UserLevel::scope())
+            .service(UserBadge::scope())
+            .service(Profile::scope());
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -376,18 +394,15 @@ pub struct UserFilterQuery {
 
 }
 
-#[async_trait::async_trait]
-impl ModelRoutes for User {
 
-    #[inline]
-    fn path() -> String { String::from("/user") }
+impl LinkedTo<Group> for User {
+    type LinkModel = GroupUser;
 
-    fn model_routes(cfg: &mut actix_web::web::ServiceConfig) {
+    /// Served at /user/{id}/group
+    fn routes(cfg: &mut ServiceConfig) {
         cfg
-            ;
-
+            .route("/hi", get().to(|id: Path<Id>| respond::ok(format!("GET /user/{}/group/hi", &id))));
     }
-
 }
 
 

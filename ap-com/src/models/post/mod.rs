@@ -1,12 +1,14 @@
+use actix_web::{HttpResponse, web::{self, get, ServiceConfig, Path}};
 use crate::{
-    types::{Id, Status, now, private, Feeling},
-    rel::link::{LinkedTo, Linked},
+    util::respond,
     models::{
-        topic::Topic,
+        topic::{TopicPost, Topic},
         book::post::BookPost,
+        group::{Group, GroupPost},
         Model
     },
-};
+    rel::link::{LinkedTo, Linked},
+    types::{Id, Status, now, private, Feeling}};
 use uuid::Uuid;
 use sqlx::{FromRow, PgPool, Postgres, types::chrono::{NaiveDateTime, Utc}};
 use serde::{Serialize, Deserialize};
@@ -34,23 +36,21 @@ pub struct Post {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
-pub struct GroupPost {
-    #[serde(default = "Id::gen")]
-    pub id: Id,
-    #[serde(default = "Id::nil")]
-    pub group_id: Id,
-    #[serde(default = "Id::nil")]
-    pub post_id: Id,
-    #[serde(default = "now")]
-    pub created_at: NaiveDateTime,
-    #[serde(default = "now")]
-    pub updated_at: NaiveDateTime,
-}
-
 #[async_trait::async_trait]
 impl Model for Post {
+    #[inline]
     fn table() -> String { String::from("posts") }
+
+    #[inline]
+    fn path() -> String { String::from("/post") }
+
+    #[inline]
+    fn routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /post/hi".to_string())))
+            .service(<Post as LinkedTo<Topic>>::scope())
+            .service(<Post as LinkedTo<Group>>::scope());
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("INSERT INTO posts
@@ -67,36 +67,6 @@ impl Model for Post {
             .bind(&self.updated_at)
             .bind(&self.feeling)
             .bind(&self.responds_to_id)
-            .fetch_one(db).await?;
-        Ok(res)
-    }
-
-}
-
-impl GroupPost {
-
-    pub fn new(group_id: Id, post_id: Id) -> Self {
-        Self {
-            id: Id::gen(),
-            group_id, post_id,
-            created_at: Utc::now().naive_utc(),
-            updated_at: Utc::now().naive_utc()
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl Model for GroupPost {
-    fn table() -> String { String::from("group_posts") }
-    async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
-        let res = sqlx::query_as::<Postgres, Self>("
-            INSERT INTO group_posts (id, group_id, post_id, created_at, updated_at)
-            VALUES ($1,, $2,, $3,, $4,, $5) RETURNING *")
-            .bind(&self.id)
-            .bind(&self.group_id)
-            .bind(&self.post_id)
-            .bind(&self.created_at)
-            .bind(&self.updated_at)
             .fetch_one(db).await?;
         Ok(res)
     }
@@ -247,34 +217,6 @@ impl Post {
     }
 
 }
-
-#[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TopicPost {
-    #[serde(default = "Id::gen")]
-    pub id: Id,
-    #[serde(default = "Id::nil")]
-    pub post_id: Id,
-    #[serde(default = "Id::nil")]
-    pub topic_id: Id,
-    #[serde(skip_serializing_if="Option::is_none")]
-    pub link_id: Option<Id>,
-    #[serde(default = "now")]
-    pub created_at: NaiveDateTime,
-    #[serde(default = "now")]
-    pub updated_at: NaiveDateTime,
-}
-impl Default for TopicPost {
-    fn default() -> Self {
-        Self {
-            id: Id::gen(),
-            post_id: Id::nil(),
-            topic_id: Id::nil(),
-            link_id: None,
-            created_at: now(),
-            updated_at: now(),
-        }
-    }
-}
 #[derive(Debug, FromRow, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PostFeelingResponse {
     #[serde(default = "Id::gen")]
@@ -301,38 +243,6 @@ impl PostFeelingResponse {
         }
     }
 }
-impl TopicPost {
-
-    pub fn new(post_id: Id, topic_id: Id, link_id: Option<Id>) -> Self {
-        Self {
-            id: Id::gen(),
-            post_id: Id::nil(),
-            topic_id: Id::nil(),
-            link_id: None,
-            created_at: now(),
-            updated_at: now(),
-        }
-    }
-}
-#[async_trait::async_trait]
-impl Model for TopicPost {
-    fn table() -> String { String::from("topic_posts") }
-
-    async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
-        let res = sqlx::query_as::<Postgres, Self>(
-           "INSERT INTO post_topics
-            (post_id, topic_id, link_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5) RETURNING id")
-            .bind(&self.post_id)
-            .bind(&self.topic_id)
-            .bind(&self.link_id)
-            .bind(&self.created_at)
-            .bind(&self.updated_at)
-            .fetch_one(db).await?;
-        Ok(res)
-
-    }
-}
 #[async_trait::async_trait]
 impl Model for PostFeelingResponse {
     fn table() -> String { String::from("post_feeling_responses") }
@@ -351,30 +261,24 @@ impl Model for PostFeelingResponse {
     }
 }
 #[async_trait::async_trait]
-impl Linked for TopicPost {
-    type Left = Topic;
-    type Right = Post;
-    fn new_basic(left_id: Id, right_id: Id, link_id: Option<Id>) -> Self {
-        Self {
-            topic_id: left_id,
-            post_id: right_id,
-            link_id, ..Default::default()
-        }
-
-    }
-    fn link_id(self) -> Option<Id> {
-        self.link_id
-    }
-    fn left_id(self) -> Id {
-        self.topic_id
-    }
-    fn right_id(self) -> Id {
-        self.post_id
-    }
-}
 impl LinkedTo<Topic> for Post {
     type LinkModel = TopicPost;
+
+    fn path() -> String {
+        String::from("/{post_id}/topic")
+    }
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|post_id: Path<Id>| respond::ok(format!("GET /post/{}/topic/hi", &post_id))));
+    }
 }
-impl LinkedTo<Post> for Topic {
-    type LinkModel = TopicPost;
+impl LinkedTo<Group> for Post {
+    type LinkModel = GroupPost;
+    fn path() -> String {
+        String::from("/{post_id}/group")
+    }
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|post_id: Path<Id>| respond::ok(format!("GET /post/{}/group/hi", &post_id))));
+    }
 }

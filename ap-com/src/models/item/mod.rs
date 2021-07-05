@@ -1,10 +1,7 @@
 use uuid::Uuid;
 use actix::prelude::*;
-use crate::{
-    types::{Id, Status, now, private},
-    rel::link::{Linked, LinkedTo},
-    models::{Link, Model, field::{Field, FieldKind}}
-};
+use actix_web::web::{Path, ServiceConfig, get};
+use crate::{models::{Record, record::RecordItem, Link,  Model, field::{Field, FieldKind}}, rel::link::{Linked, LinkedTo}, types::{Id, Status, now, private}, util::respond};
 use serde::{Serialize, Deserialize};
 use sqlx::{
     FromRow, Postgres, postgres::PgPool,
@@ -37,7 +34,18 @@ pub struct Item {
 
 #[async_trait::async_trait]
 impl Model for Item {
+    #[inline]
     fn table() -> String { String::from("items") }
+    #[inline]
+    fn path() -> String { String::from("/item") }
+
+    fn routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /item/hi".to_string())))
+            .service(<Item as LinkedTo<Field>>::scope())
+            .service(<ItemField as Model>::scope())
+            .service(<ItemField as Linked>::scope());
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -61,8 +69,28 @@ impl Model for Item {
     }
 }
 #[async_trait::async_trait]
+impl LinkedTo<Record> for Item {
+    type LinkModel = RecordItem;
+
+    fn path() -> String { String::from("/{item_id}/record") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("", get().to(|item_id: Path<Id>| respond::ok(format!("GET /item/{}/record/hi", &item_id))));
+    }
+}
+#[async_trait::async_trait]
 impl Model for ItemField {
+    #[inline]
     fn table() -> String { String::from("item_fields") }
+
+    #[inline]
+    fn path() -> String { String::from("/field") }
+
+    fn routes(cfg: &mut actix_web::web::ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /item/field/hi".to_string())));
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -176,10 +204,6 @@ impl Default for ItemField {
 }
 
 #[async_trait::async_trait]
-impl LinkedTo<Item> for Field {
-    type LinkModel = ItemField;
-}
-#[async_trait::async_trait]
 impl LinkedTo<Field> for Item {
     type LinkModel = ItemField;
 }
@@ -188,6 +212,18 @@ impl LinkedTo<Field> for Item {
 impl Linked for ItemField {
     type Left = Item;
     type Right = Field;
+
+    fn path() -> String {
+       String::from("/{item_id}/field/{field_id}")
+    }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|ids: Path<(Id, Id)>| {
+                let (item_id, field_id) = ids.into_inner();
+                respond::ok(format!("GET /item/{}/field/{}/hi", &item_id, &field_id))
+            }));
+    }
 
     fn new_basic(left_id: Id, right_id: Id, link_id: Option<Id>) -> Self {
         Self {

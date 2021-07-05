@@ -1,9 +1,5 @@
-use crate::{models::{
-    Model,
-        record::Record,
-        item::Item,
-    }, types::{Gender, Id, Status, now, private}};
-use actix_web::{HttpRequest, HttpResponse, Responder};
+use crate::{util::respond, models::Model, types::{Gender, Id, Status, now, private}};
+use actix_web::{HttpRequest, HttpResponse, Responder, web::{get, Path, ServiceConfig}};
 use chrono::NaiveDate;
 use serde::{Serialize, Deserialize};
 use sqlx::{
@@ -30,7 +26,15 @@ pub struct Action {
 
 #[async_trait::async_trait]
 impl Model for Action {
+    #[inline]
     fn table() -> String { String::from("actions") }
+    #[inline]
+    fn path() -> String { String::from("/action") }
+
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /action/hi".to_string())));
+    }
 
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let res = sqlx::query_as::<Postgres, Self>("
@@ -49,6 +53,7 @@ impl Model for Action {
             .fetch_one(db).await?;
         Ok(res)
     }
+
 }
 
 impl Action {

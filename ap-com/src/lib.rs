@@ -17,7 +17,7 @@ pub use types::{
 };
 pub use error::DiLibError;
 pub use rel::{Linked, LinkedTo};
-pub use models::{Model, ModelRoutes};
+pub use models::Model;
 pub use db::Db;
 
 

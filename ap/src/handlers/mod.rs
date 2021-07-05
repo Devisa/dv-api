@@ -58,12 +58,12 @@ pub fn routes(cfg: &mut ServiceConfig) {
 
 pub fn model_routes(cfg: &mut ServiceConfig) {
     cfg
-        .service(User::service())
-        .service(Task::service())
-        .service(Session::service())
-        .service(Account::service())
-        .service(Profile::service())
-        .service(Credentials::service());
+        .service(User::scope())
+        .service(Task::scope())
+        .service(Session::scope())
+        .service(Account::scope())
+        .service(Profile::scope())
+        .service(Credentials::scope());
 
 }
 

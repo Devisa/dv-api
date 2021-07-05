@@ -1,5 +1,5 @@
-use crate::{Model, Id, models::ModelRoutes};
-use actix_web::web::ServiceConfig;
+use crate::{Model, Id, util::respond};
+use actix_web::{HttpRequest, HttpResponse, web::{self, get, ServiceConfig}};
 use chrono::Duration;
 use crate::{token::{AccessToken, SessionToken, Token}, Expiration, Status, now, private};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::{NaiveDateTime, Utc}};
@@ -25,6 +25,11 @@ pub struct Session {
 
 #[async_trait::async_trait]
 impl Model for Session {
+    /// Served at /user/session
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /user/session/hi".to_string())));
+    }
     fn table() -> String { "sessions".to_string() }
 
     async fn insert(
@@ -42,12 +47,6 @@ impl Model for Session {
         Ok(res)
     }
 
-}
-#[async_trait::async_trait]
-impl ModelRoutes for Session {
-    fn model_routes(cfg: &mut ServiceConfig) {
-        cfg;
-    }
 }
 
 impl Default for Session {

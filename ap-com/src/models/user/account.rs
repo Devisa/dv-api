@@ -1,10 +1,12 @@
-use actix_web::web::ServiceConfig;
-use crate::{models::{Credentials, User}, query::datetime::DateFilter, types::{
+use actix_web::web::{self, get, ServiceConfig};
+use crate::{
+    util::respond,
+    models::{Credentials, User}, query::datetime::DateFilter, types::{
         Expiration, RefreshToken,
         auth::{Provider, ProviderType},
         now,  token::AccessToken
     }};
-use crate::{ModelRoutes, Model, Id};
+use crate::{Model, Id};
 use sqlx::{postgres::PgPool, FromRow, Postgres, types::chrono::NaiveDateTime };
 use serde::{Serialize, Deserialize};
 
@@ -70,6 +72,12 @@ impl Model for Account {
 
     fn id(self) -> Id { self.id }
 
+    /// Served as /user/account
+    fn routes(cfg: &mut ServiceConfig) {
+        cfg
+            .route("/hi", get().to(|| respond::ok("GET /user/account/hi".to_string())));
+    }
+
     async fn insert(self, db: &PgPool) -> sqlx::Result<Self> {
         let acct = sqlx::query_as::<Postgres, Self>("
             INSERT INTO accounts (
@@ -99,12 +107,6 @@ impl Model for Account {
             .bind(self.updated_at)
             .fetch_one(db).await?;
         Ok(acct)
-    }
-}
-#[async_trait::async_trait]
-impl ModelRoutes for Account {
-    fn model_routes(cfg: &mut ServiceConfig) {
-        cfg;
     }
 }
 
