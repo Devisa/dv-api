@@ -895,7 +895,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "http",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "pretty_env_logger",
  "prost 0.7.0",
  "rand 0.8.3",
@@ -2336,9 +2336,9 @@ dependencies = [
 
 [[package]]
 name = "hyper"
-version = "0.14.7"
+version = "0.14.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e5f105c494081baa3bf9e200b279e27ec1623895cd504c7dbef8d0b080fcf54"
+checksum = "7728a72c4c7d72665fde02204bcbd93b247721025b222ef78606f14513e0fd03"
 dependencies = [
  "bytes 1.0.1",
  "futures-channel",
@@ -2350,7 +2350,7 @@ dependencies = [
  "httparse",
  "httpdate 1.0.0",
  "itoa",
- "pin-project 1.0.7",
+ "pin-project-lite 0.2.6",
  "socket2 0.4.0",
  "tokio 1.6.2",
  "tower-service",
@@ -2378,7 +2378,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
 dependencies = [
  "bytes 1.0.1",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "native-tls",
  "tokio 1.6.2",
  "tokio-native-tls",
@@ -3658,7 +3658,7 @@ dependencies = [
  "futures-util",
  "http",
  "http-body 0.4.2",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "hyper-tls 0.5.0",
  "ipnet",
  "js-sys",
@@ -3745,7 +3745,7 @@ dependencies = [
  "crc32fast",
  "futures",
  "http",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "hyper-tls 0.5.0",
  "lazy_static",
  "log",
@@ -3788,7 +3788,7 @@ dependencies = [
  "chrono",
  "dirs-next",
  "futures",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "serde",
  "serde_json",
  "shlex",
@@ -3874,7 +3874,7 @@ dependencies = [
  "hex",
  "hmac 0.10.1",
  "http",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "log",
  "md5",
  "percent-encoding",
@@ -4805,7 +4805,7 @@ dependencies = [
  "h2 0.3.3",
  "http",
  "http-body 0.4.2",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "percent-encoding",
  "pin-project 1.0.7",
  "prost 0.7.0",
@@ -5181,7 +5181,7 @@ dependencies = [
  "futures",
  "headers",
  "http",
- "hyper 0.14.7",
+ "hyper 0.14.10",
  "log",
  "mime",
  "mime_guess",
